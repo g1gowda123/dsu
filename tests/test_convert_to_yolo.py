@@ -1,10 +1,11 @@
-"""Synthetic fixture self-test for convert_to_yolo.py."""
-
 import tempfile
 import unittest
 from pathlib import Path
+import sys
 import numpy as np
 import yaml
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 try:
     import cv2
@@ -79,8 +80,9 @@ class TestConvertToYOLO(unittest.TestCase):
             if cv2 is not None:
                 cv2.imwrite(str(val_images / "003.jpg"), dummy_img)
 
-            # Run conversion
-            convert_dataset(root=src_root, out_dir=out_root, qa=True)
+            # Run conversion with test-local data.yaml
+            test_yaml = out_root / "data.yaml"
+            convert_dataset(root=src_root, out_dir=out_root, qa=True, yaml_path=test_yaml)
 
             # Check label files
             lbl1 = out_root / "labels" / "train" / "001.txt"
@@ -103,10 +105,9 @@ class TestConvertToYOLO(unittest.TestCase):
             # car is class 2
             self.assertEqual(content3[0], "2")
 
-            # Check models/finetuned/data.yaml
-            data_yaml = Path("models/finetuned/data.yaml")
-            self.assertTrue(data_yaml.exists())
-            with open(data_yaml, "r", encoding="utf-8") as f:
+            # Check generated data.yaml
+            self.assertTrue(test_yaml.exists())
+            with open(test_yaml, "r", encoding="utf-8") as f:
                 cfg = yaml.safe_load(f)
             self.assertEqual(cfg["names"][0], "auto_rickshaw")
             self.assertEqual(cfg["names"][1], "bus")

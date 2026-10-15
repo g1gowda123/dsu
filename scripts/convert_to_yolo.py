@@ -97,7 +97,7 @@ def parse_voc_xml(xml_path: Path):
     return width, height, objects
 
 
-def convert_dataset(root: Path, out_dir: Path, qa: bool = False, seed: int = 42):
+def convert_dataset(root: Path, out_dir: Path, qa: bool = False, seed: int = 42, yaml_path: Path | None = None):
     """Convert VOC dataset to YOLO format."""
     random.seed(seed)
     root = root.resolve()
@@ -247,9 +247,9 @@ def convert_dataset(root: Path, out_dir: Path, qa: bool = False, seed: int = 42)
             if s == "train" and yolo_lines:
                 converted_train_pairs.append((dest_img, dest_lbl))
 
-    # Write data.yaml to models/finetuned/data.yaml
-    data_yaml_path = Path("models/finetuned/data.yaml")
-    data_yaml_path.parent.mkdir(parents=True, exist_ok=True)
+    # Write data.yaml
+    target_yaml = Path(yaml_path) if yaml_path else Path("models/finetuned/data.yaml")
+    target_yaml.parent.mkdir(parents=True, exist_ok=True)
     yaml_content = {
         "path": str(out_dir.resolve()),
         "train": "images/train",
@@ -257,7 +257,7 @@ def convert_dataset(root: Path, out_dir: Path, qa: bool = False, seed: int = 42)
         "test": "images/test",
         "names": {idx: name for idx, name in enumerate(CANONICAL_CLASSES)},
     }
-    with open(data_yaml_path, "w", encoding="utf-8") as f:
+    with open(target_yaml, "w", encoding="utf-8") as f:
         yaml.dump(yaml_content, f, sort_keys=False)
 
     # QA contact sheet if requested
@@ -305,7 +305,7 @@ def convert_dataset(root: Path, out_dir: Path, qa: bool = False, seed: int = 42)
 
     # Print compact summary (under 25 lines)
     print("=== YOLO Conversion Summary ===")
-    print(f"Data YAML written: {data_yaml_path.resolve()}")
+    print(f"Data YAML written: {target_yaml.resolve()}")
     print("Images per split:")
     for s in splits:
         print(f"  {s:8s}: {stats['images_per_split'][s]} (bg: {stats['background_images'][s]})")

@@ -1,8 +1,10 @@
-"""Synthetic fixture test for scripts/probe_dataset.py without touching real data."""
-
 import tempfile
 import unittest
 from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from scripts.probe_dataset import bounded_walk, parse_classes_from_file, sample_file_head
 
 
