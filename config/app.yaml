@@ -1,4 +1,11 @@
-model: "yolo26n.pt"
+model: "models/finetuned/best.pt"
+device: "cpu"
+active_classes:
+  - car
+  - motorcycle
+  - auto_rickshaw
+  - bus
+  - truck
 imgsz: 640
 frame_skip: 2
 confidence: 0.30
