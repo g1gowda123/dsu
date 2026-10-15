@@ -1,0 +1,10 @@
+# One-time per-camera calibration. Zones/lane polygons in normalized image coords.
+# Homography: 4+ source pixel points <-> destination metre points on a reference
+# plane. Execution is OUT OF SCOPE for the hackathon; schema only.
+camera:
+  name: "junction_01"
+  resolution: [1280, 720]
+  fps: 25
+lanes: []          # e.g. [{id: "N_1", polygon: [[x,y],...], direction: "S"}]
+zones: []          # e.g. [{id: "stopline_N", polygon: [...]}]
+homography: null   # {src_px: [[x,y]...], dst_m: [[x,y]...]}

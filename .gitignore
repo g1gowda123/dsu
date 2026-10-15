@@ -1,0 +1,13 @@
+.env
+data/videos/*.mp4
+!data/videos/.gitkeep
+artifacts/*
+!artifacts/.gitkeep
+docs/*
+!docs/.gitkeep
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+*.pt
+*.onnx
