@@ -1,0 +1,10 @@
+path: /tmp/tmpqs40gv1c
+train: images/train
+val: images/val
+test: images/test
+names:
+  0: auto_rickshaw
+  1: bus
+  2: car
+  3: motorcycle
+  4: truck
