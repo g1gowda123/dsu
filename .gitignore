@@ -5,6 +5,7 @@ artifacts/*
 !artifacts/.gitkeep
 docs/*
 !docs/.gitkeep
+!docs/*.md
 __pycache__/
 *.py[cod]
 venv/
