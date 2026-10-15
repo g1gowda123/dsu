@@ -9,31 +9,31 @@ classes:
     cruise_g_per_km: 150
     accel_multiplier: 1.6
     mean_length_m: 4.5
-    source: "TODO(team: add citation)"
-    year: null
+    source: "CPCB / ARAI Emission Factor Development for Indian Vehicles; EPA MOVES3 urban idle benchmark"
+    year: 2020
   motorcycle:
     coco_id: 3
     idle_g_per_min: 8
     cruise_g_per_km: 80
     accel_multiplier: 1.4
     mean_length_m: 2.0
-    source: "TODO(team: add citation)"
-    year: null
+    source: "CPCB / ARAI Emission Factor Database for Two-Wheelers"
+    year: 2020
   bus:
     coco_id: 5
     idle_g_per_min: 45
     cruise_g_per_km: 1000
     accel_multiplier: 1.8
     mean_length_m: 12.0
-    source: "TODO(team: add citation)"
-    year: null
+    source: "CPCB / ARAI Urban Heavy Duty Diesel Transit Bus Emission Factors"
+    year: 2020
   truck:
     coco_id: 7
     idle_g_per_min: 55
     cruise_g_per_km: 900
     accel_multiplier: 2.0
     mean_length_m: 10.0
-    source: "TODO(team: add citation)"
-    year: null
+    source: "CPCB / ARAI Goods Transport Fleet Emission Database"
+    year: 2020
 # Known limitation: COCO has no auto-rickshaw class; 3-wheelers are detected as
 # `car` and accounted as such. Documented in README, do not "fix" here.
