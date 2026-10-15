@@ -11,4 +11,5 @@ __pycache__/
 venv/
 .venv/
 *.pt
+!models/finetuned/best.pt
 *.onnx
