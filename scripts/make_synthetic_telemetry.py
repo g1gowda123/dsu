@@ -10,7 +10,11 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+import sys
 from typing import Any, Dict, List
+
+# Ensure project root is in sys.path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import numpy as np
 import pandas as pd
@@ -393,11 +397,10 @@ def main() -> None:
             with open(config_path, "r", encoding="utf-8") as f:
                 factors = yaml.safe_load(f)
             df_emitted = compute_track_emissions(df, factors, min_age=15)
-            aggs, zone_ranks = aggregate(df_emitted, window_s=60.0)
+            aggs = aggregate(df_emitted, window_s=60.0)
             if aggs:
                 payload = to_dispatcher_payload(
                     aggs[0],
-                    zone_ranks[0] if zone_ranks else [],
                     intersection_id="junction_01",
                 )
                 payload_path = Path(args.payload_output)
