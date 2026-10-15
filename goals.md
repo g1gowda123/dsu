@@ -1,11 +1,11 @@
 Hackathon: DSU Code Clash · Track 05: Carbon Footprint Intelligence PlatformSprint: 36 effective hours. Demo freeze at h34 — hard stop.Deployment thesis: Software-only retrofit on the government's existing CCTVenforcement camera fleet. Lightweight enough for per-junction edge boxes or sharedICCC compute. Telemetry-only uplink (no video egress, no PII).Agent working mode: Execute milestones in order. After each milestone: run itsverification command, commit (conventional message), report status. If any criterionfails twice, STOP and report. If a milestone exceeds 1.5× its timebox, STOP andreport. Never silently deviate.
 1. Mission
 
-Ingest intersection video, track vehicles (yolo26n + ByteTrack), classify kinematicstate (IDLE / ACCEL / CRUISE / DECEL), convert state + class to CO2 via aconfig-driven emission matrix, run counterfactual what-ifs, and issue municipaldirectives via a schema-constrained LLM dispatcher (all carbon math deterministicPython — never the LLM). Everything must run CPU-first and produce a measurableperformance report supporting the "existing camera fleet" deployment claim.
+Ingest intersection video, track vehicles (yolo26n + ByteTrack), classify kinematicstate (IDLE / ACCEL / CRUISE / DECEL), convert state + class to CO2 via aconfig-driven emission matrix, run counterfactual what-ifs, and issue municipaldirectives via a schema-constrained LLM dispatcher (all carbon math deterministicPython — never the LLM). Everything must run CPU-first and produce a measurableperformance report supporting the "existing camera fleet" deployment claim. Vehicle taxonomy is 5 classes: auto_rickshaw, bus, car, motorcycle, truck (auto_rickshaw added via fine-tuning on Indian road data, performed on an external workstation). The repo consumes best.pt via a config-only flip, gated by an A/B evaluation.
 2. Non-negotiable guardrails
 
     NEVER let the LLM compute emission numbers. LLM selects actions + rationale only.
-    Lightweight gates (see M7): ONNX export < 25MB; pipeline >= 1.5x realtime on thedev CPU at imgsz 640, frame_skip=2; peak RAM < 2GB. INT8 quantization attempt istimeboxed to 30 min max — if it fails, ship FP32 and report FPS. Do not debug itfurther.
+    ENVIRONMENT SPLIT: The repo/dev/deploy environment is CPU-ONLY — torch installed from https://download.pytorch.org/whl/cpu, torch.cuda.is_available() == False, zero nvidia-* wheels, requirements.txt line 1 is '--extra-index-url https://download.pytorch.org/whl/cpu' with torch pinned to a +cpu local version so fresh clones never pull CUDA wheels. EXCEPTION: the model-training workstation (RTX 4060) may install CUDA torch wheels (--index-url .../whl/cu124) in a SEPARATE venv OUTSIDE the repo. No system CUDA Toolkit install anywhere. perception/ inference calls pass device=cfg['device'] explicitly.
     Privacy by architecture: no license-plate reading, no face/PII processing anywherein the codebase or docs. Design docs state video never leaves the processing node.
     Currency: INR. Fuel price, equivalences — config-driven, never hardcoded.
     All API keys via .env (provide .env.example). Never committed.
@@ -24,7 +24,7 @@ Ingest intersection video, track vehicles (yolo26n + ByteTrack), classify kinema
 
 4. Repo structure
 
-eco-kinetic-twin/├── config/│   ├── emission_factors.yaml   # per-class factors + source + year (CPCB/EPA-style)│   ├── camera_calibration.yaml # zone polygons + homography placeholder (schema only)│   └── app.yaml                # thresholds, class map {2,3,5,7}, frame_skip=2,│                               # imgsz=640, fuel_price_inr, LLM settings├── perception/ (detector.py, kinematics.py, pipeline.py)├── twin/       (emission_engine.py, corridor.py, scenarios.py)├── dispatcher/ (schema.py, llm_dispatcher.py, rules_fallback.py)├── dashboard/app.py├── scripts/│   ├── run_pipeline.py│   ├── export_model.py         # ONNX export│   └── benchmark.py            # writes artifacts/perf_report.json├── tests/├── data/videos/                # gitignored — Indian intersection clip, license noted├── artifacts/  (overlay.mp4, telemetry.parquet, events.jsonl, directives.jsonl,│                perf_report.json, demo_backup.mp4)├── docs/deployment.md          # one-pager: topology, cost, privacy, ICCC integration├── requirements.txt, .env.example, README.md
+eco-kinetic-twin/├── config/│   ├── emission_factors.yaml   # per-class factors + source + year (CPCB/EPA-style)│   ├── camera_calibration.yaml # zone polygons + homography placeholder (schema only)│   └── app.yaml                # thresholds, class map {2,3,5,7}, frame_skip=2,│                               # imgsz=640, fuel_price_inr, LLM settings├── models/finetuned/ (data.yaml; *.pt gitignored)├── perception/ (detector.py, kinematics.py, pipeline.py)├── twin/       (emission_engine.py, corridor.py, scenarios.py)├── dispatcher/ (schema.py, llm_dispatcher.py, rules_fallback.py)├── dashboard/app.py├── scripts/│   ├── run_pipeline.py│   ├── export_model.py         # ONNX export│   ├── benchmark.py            # writes artifacts/perf_report.json│   ├── prepare_dataset.py│   ├── train.py│   └── ab_eval.py├── tests/├── data/videos/                # gitignored — Indian intersection clip, license noted├── artifacts/  (overlay.mp4, telemetry.parquet, events.jsonl, directives.jsonl,│                perf_report.json, demo_backup.mp4)├── docs/deployment.md          # one-pager: topology, cost, privacy, ICCC integration├── docs/model_card.md          # (authored on the training workstation, committed after review)├── requirements.txt, .env.example, README.md
 5. Emission model spec (implement exactly; defaults cited CPCB/EPA-style urban
 
    BS-VI figures — citation strings live in the YAML)Per tracked vehicle per frame (dt from video timestamps):
@@ -32,7 +32,7 @@ eco-kinetic-twin/├── config/│   ├── emission_factors.yaml   # per-
     speed proxy: v_bls = |Δcentroid| / bbox_width_px; v_kmh = v_bls *MEAN_LENGTH_M[class] * 3.6; EMA alpha=0.3.
     state machine (3s sliding window):  IDLE: v < 2 km/h for > 3s (only after once exceeding 5 km/h)  ACCEL: dv/dt above threshold, or v 5->15 km/h within 5s  CRUISE: 15–50 km/h steady; DECEL: falling beyond threshold
     rates (g/s):  CRUISE/DECEL: cruise_g_per_km * v_kmh / 3600  IDLE:         idle_g_per_min / 60  ACCEL:        cruise rate * accel_multiplier
-    Ledger entry only if track age >= 15 frames.Defaults (config/emission_factors.yaml):  class        idle_g_per_min  cruise_g_per_km  accel_mult  mean_length_m  car          22              150              1.6         4.5  motorcycle   8               80               1.4         2.0  bus          45              1000             1.8         12.0  truck        55              900              2.0         10.0Known limitation (README + config comment): COCO has no auto-rickshaw class;3-wheelers are detected as car and accounted as such. Future work: lightweight3-wheeler classifier; PUC cross-referencing of anomalous idlers.Corridor aggregates per 60s window: kg CO2, idle share %, heavy-vehicle stopevents/h, per-zone idle-minutes -> ranked choke points.Event log: append-only artifacts/events.jsonl.
+    Ledger entry only if track age >= 15 frames.Defaults (config/emission_factors.yaml):  class        idle_g_per_min  cruise_g_per_km  accel_mult  mean_length_m  car          22              150              1.6         4.5  motorcycle   8               80               1.4         2.0  auto_rickshaw 12             95               1.4         3.0  bus          45              1000             1.8         12.0  truck        55              900              2.0         10.0 (auto_rickshaw row implemented by track C in config/emission_factors.yaml with source TODO). State: auto_rickshaw counts as LIGHT; heavy = bus + truck only. Perception spec amendment: class IDs are NEVER hardcoded — resolve at runtime as model.names ∩ active_classes. With stock COCO weights, auto_rickshaw is simply absent → behavior unchanged. Known limitation (README + config comment): COCO has no auto-rickshaw class;3-wheelers are detected as car and accounted as such. Future work: lightweight3-wheeler classifier; PUC cross-referencing of anomalous idlers.Corridor aggregates per 60s window: kg CO2, idle share %, heavy-vehicle stopevents/h, per-zone idle-minutes -> ranked choke points.Event log: append-only artifacts/events.jsonl.
 
 6. LLM dispatcher contract
 
@@ -44,9 +44,14 @@ M0 — Env & assets (0–2h)
     yolo26n.pt weights; Indian intersection clip (Pexels preferred; license noted inREADME) at data/videos/junction.mp4.
     Verify: python -m perception.detector --smoke on 100 frames, exit 0.
 
+M-T — Fine-tune track (parallel, external workstation, owned by track A)
+
+    fine-tune yolo26n on IDD fine-grained Indian-road data (5-class taxonomy). GATE: A/B eval on junction.mp4 — ship fine-tuned ONLY IF auto_rickshaw detected plausibly AND car+motorcycle detections drop <10% vs stock COCO. Gate fails → keep stock yolo26n + README limitation note.
+    config/app.yaml gains: active_classes: [car, motorcycle, auto_rickshaw, bus, truck] and device: "cpu"; model stays "yolo26n.pt" until the gate passes, then flips to "models/finetuned/best.pt".
+
 M1 — Perception + kinematics (2–8h)
 
-    model.track(tracker="bytetrack.yaml"), classes {2,3,5,7}, verbose=False,frame_skip=2 with dt from timestamps.
+    model.track(tracker="bytetrack.yaml"), verbose=False,frame_skip=2 with dt from timestamps. Class IDs are NEVER hardcoded — resolve at runtime as model.names ∩ active_classes. With stock COCO weights, auto_rickshaw is simply absent → behavior unchanged.
     Speed proxy + EMA + 4-state machine per §5. Min track age 15 frames.
     Tests: synthetic stopped vehicle + accelerating truck -> expected state sequences.
     Verify: pytest tests/test_kinematics.py -q; 60s pipeline run producestelemetry.parquet with columns [video_time_s, track_id, cls, cx, cy, speed_kmh,state, bbox_w_px], no NaNs, IDs manually spot-checked as stable.
@@ -68,13 +73,13 @@ M4 — Dashboard (16–21h)
 
 M5 — What-if shadow twin (21–25h)
 
-    Controls: EV share per class (0–100%), green-extension toggle, heavy-vehiclerestriction toggle. Vectorized NumPy recompute from telemetry, < 1s response.
+    Controls: EV share per class (0–100%), green-extension toggle, heavy-vehiclerestriction toggle. Synthetic mix becomes ~50% motorcycle / 25% car / 15% auto_rickshaw / 5% bus / 5% truck. Vectorized NumPy recompute from telemetry, < 1s response.
     Show delta + annualized extrapolation + equivalences (INR fuel saved, trees).
     Verify: EV share 100% -> tailpipe CO2 ~ 0 (test asserts this).
 
 M6 — GenAI dispatcher (25–29h)
 
-    Full §6 contract + rules_fallback + dashboard directive feed + compliance summary.
+    Full §6 contract + rules_fallback + dashboard directive feed + compliance summary. Dispatcher target_class enum gains "auto_rickshaw".
     Verify: 20 mock payloads -> 100% schema-valid after <= 1 retry; API disabled ->mode="rules_fallback" visible in UI.
 
 M7 — Perf, deployment story, docs (29–33h)
