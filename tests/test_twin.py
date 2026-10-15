@@ -74,6 +74,28 @@ def test_bus_idle_60s_golden(emission_factors):
     assert pytest.approx(45.0, abs=0.5) == total_g
 
 
+def test_auto_rickshaw_idle_60s_golden(emission_factors):
+    """1 auto_rickshaw IDLE 60s -> 12.0 g."""
+    n_frames = 750
+    dt_s = 0.08
+    times = [round(i * dt_s, 4) for i in range(n_frames)]
+    df = pd.DataFrame({
+        "video_time_s": times,
+        "track_id": [5] * n_frames,
+        "cls": ["auto_rickshaw"] * n_frames,
+        "cx_norm": [0.5] * n_frames,
+        "cy_norm": [0.5] * n_frames,
+        "bbox_w_px": [70.0] * n_frames,
+        "speed_kmh": [0.0] * n_frames,
+        "state": ["IDLE"] * n_frames,
+        "track_age_frames": list(range(15, 15 + n_frames)),
+    })
+
+    emitted = compute_track_emissions(df, emission_factors, min_age=15)
+    total_g = float(emitted["co2_cum_g"].iloc[-1])
+    assert pytest.approx(12.0, abs=0.5) == total_g
+
+
 def test_car_accel_60s_golden(emission_factors):
     """1 car ACCEL at 36 km/h 60s -> 144.0 g."""
     n_frames = 750
@@ -153,11 +175,20 @@ def test_green_extension_strictly_increasing(emission_factors):
     assert s10 > s5
     assert s15 > s10
 
-    # Theoretical upper bound with cut_fraction = 1.0
-    # Simulate with max cut (e.g. green_extension_s large or idle fully cut)
-    # Since X <= 15 and all idle durations in synthetic telemetry are >= 10s (mostly 15-55s),
-    # s15 is strictly less than the total upper bound
-    # Let's verify savings <= baseline
+    # Theoretical upper bound with cut_fraction = 1.0: sum of idle_rate*idle_s + (mult-1)*cruise*accel_s
+    from twin.scenarios import _extract_stop_and_accel_events
+    from twin.emission_engine import get_class_factors
+    events = _extract_stop_and_accel_events(df, min_age=15, dt_s=0.08, min_idle_s=3.0)
+    theoretical_upper_bound = 0.0
+    for ev in events:
+        c = ev["cls"]
+        cfg = get_class_factors(emission_factors, c)
+        idle_rate = float(cfg.get("idle_g_per_min", 0.0)) / 60.0
+        cruise_rate = (float(cfg.get("cruise_g_per_km", 0.0)) * 36.0) / 3600.0
+        accel_mult = float(cfg.get("accel_multiplier", 1.0))
+        theoretical_upper_bound += (idle_rate * ev["idle_s"] + (accel_mult - 1.0) * cruise_rate * ev["accel_s"])
+
+    assert s15 <= theoretical_upper_bound
     assert s15 <= res_15["baseline_co2_g"]
 
 
