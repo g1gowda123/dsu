@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Literal, Optional, Union
 import pandas as pd
 import yaml
 
-from dispatcher.schema import Action, ActionType, CorridorPayload, Directive
+from dispatcher.schema import Action, ActionType, CorridorPayload, Directive, Lane, TargetClass
 from twin.scenarios import compute_action_savings
 
 DEFAULT_FACTORS_PATH = Path(__file__).resolve().parent.parent / "config" / "emission_factors.yaml"
@@ -23,15 +23,19 @@ def _load_factors(factors_path: Optional[Union[str, Path]] = None) -> Dict[str, 
     path = Path(factors_path) if factors_path else DEFAULT_FACTORS_PATH
     if path.exists():
         with open(path, "r", encoding="utf-8") as f:
-            return yaml.safe_load(f)
+            return yaml.safe_load(f) or {}
     return {}
 
 
+load_emission_factors = _load_factors
+
+
 def _determine_lane_from_zone(zone_id: Optional[str]) -> Literal["N", "S", "E", "W"]:
-    """Map 4x4 spatial zone id (e.g. z_r1_c2) to cardinal approach axis."""
+    """Map 4x4 spatial zone id (e.g. z_r1_c2 or 0_1) to cardinal approach axis."""
     if not zone_id:
         return "N"
-    m = re.match(r"z_r(\d)_c(\d)", zone_id)
+    # Support both "z_r1_c2" and "0_1" formats
+    m = re.match(r"(?:z_r)?(\d)(?:_c|_)?(\d)", str(zone_id))
     if not m:
         return "N"
     r, c = int(m.group(1)), int(m.group(2))
@@ -49,6 +53,20 @@ def _determine_lane_from_zone(zone_id: Optional[str]) -> Literal["N", "S", "E", 
     return "S" if r >= 2 else "W"
 
 
+def compute_deterministic_co2_saved(
+    actions: List[Action],
+    payload: Union[CorridorPayload, Dict[str, Any]],
+    factors: Optional[Dict[str, Any]] = None,
+) -> float:
+    """Deterministic calculation of carbon savings from action parameters and payload metrics."""
+    factors_dict = factors if factors is not None else _load_factors()
+    return compute_action_savings(
+        actions=actions,
+        factors=factors_dict,
+        payload=payload,
+    )
+
+
 def rules_fallback(
     payload: Union[CorridorPayload, Dict[str, Any]],
     df: Optional[pd.DataFrame] = None,
@@ -60,7 +78,7 @@ def rules_fallback(
     Rules:
       1. idle_vehicle_minutes > 5.0 OR idle_ratio > 0.40:
          -> extend_green on the congested axis, 8-12s.
-      2. heavy_vehicle_density > 0.15 AND high stop events (>=3):
+      2. heavy_vehicle_density > 0.15 AND (n_stops >= 3 or heavy_vehicle_density >= 0.20):
          -> heavy_vehicle_restriction / green_wave_priority, 10s, bus/truck.
       3. Otherwise:
          -> no_action (savings = 0.0g).
@@ -168,3 +186,11 @@ def rules_fallback(
         rationale=rationale,
         mode="rules_fallback",
     )
+
+
+def generate_fallback_directive(
+    payload: Union[CorridorPayload, Dict[str, Any]],
+    intersection_id: Optional[str] = None,
+) -> Directive:
+    """Alias matching alternative caller signature."""
+    return rules_fallback(payload=payload, intersection_id=intersection_id)

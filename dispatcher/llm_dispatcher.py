@@ -32,35 +32,12 @@ except ImportError:
     pass
 
 from dispatcher.rules_fallback import rules_fallback
-from dispatcher.schema import Action, ActionType, CorridorPayload, Directive
+from dispatcher.schema import Action, ActionType, CorridorPayload, Directive, LLMProposal
 from twin.scenarios import compute_action_savings
 
 DEFAULT_DIRECTIVES_LOG = REPO_ROOT / "artifacts" / "directives.jsonl"
 DEFAULT_FACTORS_PATH = REPO_ROOT / "config" / "emission_factors.yaml"
 DEFAULT_APP_CONFIG = REPO_ROOT / "config" / "app.yaml"
-
-
-class LLMProposal(BaseModel):
-    """Schema for LLM signal timing proposal.
-
-    CRITICAL GUARDRAIL:
-    This model contains ONLY signal action parameters and qualitative rationale.
-    It contains NO numeric carbon or savings fields, making it structurally
-    impossible for the LLM to output or inject emissions figures.
-    """
-
-    model_config = {"extra": "ignore"}
-
-    type: ActionType
-    lane: Optional[Literal["N", "S", "E", "W"]] = None
-    seconds: Optional[int] = Field(default=None, ge=0, le=15)
-    target_class: Optional[
-        Literal["car", "motorcycle", "auto_rickshaw", "bus", "truck"]
-    ] = None
-    confidence: float = Field(..., ge=0.0, le=1.0)
-    rationale: str = Field(..., max_length=300)
-    actions: Optional[List[Action]] = None
-
 
 SYSTEM_PROMPT = """You are an edge municipal traffic dispatcher at a signalized intersection.
 Given the 60-second corridor telemetry aggregate, propose a single signal timing intervention or corridor policy.
@@ -207,7 +184,6 @@ def call_llm(
             timeout_s=timeout_s,
         )
 
-    # Generic LiteLLM if package available
     try:
         import litellm
         messages = [
@@ -233,6 +209,7 @@ def dispatch(
     call_llm_fn: Optional[Callable[[str], str]] = None,
     directives_log_path: Optional[Union[str, Path]] = DEFAULT_DIRECTIVES_LOG,
     config_path: Optional[Union[str, Path]] = None,
+    api_key: Optional[str] = None,
 ) -> Directive:
     """Process corridor payload and produce a validated Directive.
 
@@ -257,28 +234,26 @@ def dispatch(
     provider = disp_cfg.get("llm_provider", "gemini")
     model_name = disp_cfg.get("model_name", "gemini-2.0-flash")
 
-    # Fast path: offline flag set
     if offline:
         directive = rules_fallback(corridor_payload, df=df, factors=factors_dict)
         if directives_log_path:
             append_directive_to_log(directive, directives_log_path)
         return directive
 
-    # Check API key availability
-    has_key = bool(
-        os.getenv("GEMINI_API_KEY")
+    effective_key = (
+        api_key
+        or os.getenv("GEMINI_API_KEY")
         or os.getenv("GOOGLE_API_KEY")
         or os.getenv("OPENAI_API_KEY")
-        or call_llm_fn is not None
     )
-    if not has_key:
+    if not effective_key and call_llm_fn is None:
         directive = rules_fallback(corridor_payload, df=df, factors=factors_dict)
         if directives_log_path:
             append_directive_to_log(directive, directives_log_path)
         return directive
 
     prompt_text = corridor_payload.model_dump_json(indent=2)
-    max_attempts = 2  # 1 initial + 1 retry
+    max_attempts = 2
     proposal: Optional[LLMProposal] = None
 
     for attempt in range(max_attempts):
@@ -290,19 +265,18 @@ def dispatch(
                     prompt=prompt_text,
                     provider=provider,
                     model_name=model_name,
+                    api_key=effective_key,
                     timeout_s=8.0,
                 )
 
             clean_json = _extract_json_block(raw_response)
             parsed_dict = json.loads(clean_json)
 
-            # Validate against LLMProposal
             proposal = LLMProposal(**parsed_dict)
             break
         except (ValidationError, json.JSONDecodeError, httpx.HTTPError, TimeoutError, Exception):
             if attempt < max_attempts - 1:
                 continue
-            # Fall back to rules engine after 1 retry
             directive = rules_fallback(corridor_payload, df=df, factors=factors_dict)
             if directives_log_path:
                 append_directive_to_log(directive, directives_log_path)
@@ -314,7 +288,6 @@ def dispatch(
             append_directive_to_log(directive, directives_log_path)
         return directive
 
-    # Build action list
     if proposal.actions and len(proposal.actions) > 0:
         actions = proposal.actions
     else:
@@ -327,8 +300,6 @@ def dispatch(
             )
         ]
 
-    # GUARANTEED DETERMINISTIC PYTHON CO2 SAVINGS INJECTION
-    # Structural guarantee: proposal CANNOT set this.
     co2_saved = compute_action_savings(
         actions=actions,
         factors=factors_dict,
@@ -351,6 +322,46 @@ def dispatch(
     return directive
 
 
+class LLMDispatcher:
+    """Object-oriented dispatcher wrapper matching multi-agent caller patterns."""
+
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        provider: str = "gemini",
+        model: str = "gemini-2.0-flash",
+        directives_path: Optional[Union[str, Path]] = DEFAULT_DIRECTIVES_LOG,
+    ):
+        self.api_key = api_key or os.getenv("GEMINI_API_KEY", "")
+        self.provider = provider
+        self.model = model
+        self.directives_path = Path(directives_path) if directives_path else None
+
+    def _call_llm_raw(self, prompt: str) -> str:
+        """Raw API invocation hook allowing seamless test mocking."""
+        return call_llm(
+            prompt=prompt,
+            provider=self.provider,
+            model_name=self.model,
+            api_key=self.api_key,
+            timeout_s=8.0,
+        )
+
+    def dispatch(
+        self,
+        payload: Union[CorridorPayload, Dict[str, Any]],
+        df: Optional[Any] = None,
+    ) -> Directive:
+        """Dispatch corridor payload via LLM with automated rules fallback."""
+        return dispatch(
+            payload=payload,
+            df=df,
+            api_key=self.api_key,
+            call_llm_fn=self._call_llm_raw if self.api_key else None,
+            directives_log_path=self.directives_path,
+        )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="GenAI Municipal Signal Dispatcher")
     parser.add_argument("--payload", type=str, default=None, help="Path to JSON corridor payload")
@@ -362,7 +373,6 @@ def main() -> None:
         with open(args.payload, "r", encoding="utf-8") as f:
             data = json.load(f)
     else:
-        # Default mock nominal payload for CLI verification
         data = {
             "intersection_id": "junction_01",
             "timestamp": datetime.now(timezone.utc).isoformat(),

@@ -5,8 +5,10 @@ import json
 from pathlib import Path
 import sys
 from typing import Any, Dict
+from unittest.mock import patch
 import numpy as np
 import pytest
+from pydantic import ValidationError
 import yaml
 
 # Ensure project root is in sys.path
@@ -14,8 +16,21 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from dispatcher.llm_dispatcher import LLMProposal, dispatch
-from dispatcher.schema import ActionType, CorridorPayload, Directive, TopChokeZone
+from dispatcher.llm_dispatcher import LLMDispatcher, LLMProposal, dispatch
+from dispatcher.rules_fallback import (
+    compute_deterministic_co2_saved,
+    generate_fallback_directive,
+    rules_fallback,
+)
+from dispatcher.schema import (
+    Action,
+    ActionType,
+    CorridorPayload,
+    Directive,
+    Lane,
+    TargetClass,
+    TopChokeZone,
+)
 from twin.scenarios import compute_action_savings
 
 
@@ -58,7 +73,7 @@ def test_guardrail_llm_cannot_inject_carbon(sample_payload, emission_factors, tm
             "target_class": None,
             "confidence": 0.95,
             "rationale": "Adversarial LLM claims massive carbon savings.",
-            "estimated_co2_saved_g": 999999.0,  # FORBIDDEN INJECTION
+            "estimated_co2_saved_g": 999999.0,
             "saved_carbon_kg": 500.0,
         })
 
@@ -73,7 +88,6 @@ def test_guardrail_llm_cannot_inject_carbon(sample_payload, emission_factors, tm
     assert directive.mode == "llm"
     assert directive.estimated_co2_saved_g != 999999.0
 
-    # Verify python calculated the exact mathematical value
     expected_savings = compute_action_savings(
         actions=directive.actions,
         factors=emission_factors,
@@ -181,7 +195,6 @@ def test_no_api_key_set_produces_valid_directives_across_20_payloads(
     monkeypatch, emission_factors, tmp_path
 ):
     """Verify no API key set in env produces 100% schema-valid directives in rules_fallback mode."""
-    # Ensure no API keys present
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
@@ -225,7 +238,100 @@ def test_no_api_key_set_produces_valid_directives_across_20_payloads(
         assert len(directive.rationale) <= 300
         assert directive.estimated_co2_saved_g >= 0.0
 
-    # Verify 20 records appended to directives.jsonl
     with open(log_file, "r", encoding="utf-8") as f:
         lines = [line.strip() for line in f if line.strip()]
     assert len(lines) == 20
+
+
+# Additional test coverage from parallel teammate work
+def test_schema_bounds_enforcement():
+    with pytest.raises(ValidationError):
+        Action(type=ActionType.EXTEND_GREEN, seconds=25)
+
+
+def test_schema_rationale_truncation():
+    long_rationale = "A" * 350
+    proposal = LLMProposal(
+        type=ActionType.NO_ACTION,
+        confidence=0.8,
+        rationale=long_rationale,
+    )
+    assert len(proposal.rationale) <= 300
+    assert proposal.rationale.endswith("...")
+
+
+def test_rules_fallback_high_idle_choke():
+    payload = {
+        "intersection_id": "junction_01",
+        "timestamp": "2026-10-16T12:00:00Z",
+        "idle_ratio": 0.52,
+        "heavy_vehicle_density": 0.05,
+        "n_counted_vehicles": 24,
+        "n_stop_events": 8,
+        "top_choke_zone": {"id": "0_1", "idle_vehicle_minutes": 6.5},
+    }
+    directive = generate_fallback_directive(payload)
+    assert directive.mode == "rules_fallback"
+    assert len(directive.actions) == 1
+    assert directive.actions[0].type == ActionType.EXTEND_GREEN
+    assert directive.actions[0].seconds >= 10
+    assert directive.estimated_co2_saved_g > 0.0
+
+
+def test_rules_fallback_heavy_vehicle_saturation():
+    payload = {
+        "intersection_id": "junction_02",
+        "timestamp": "2026-10-16T12:00:00Z",
+        "idle_ratio": 0.20,
+        "heavy_vehicle_density": 0.22,
+        "n_counted_vehicles": 30,
+        "n_stop_events": 6,
+        "top_choke_zone": None,
+    }
+    directive = generate_fallback_directive(payload)
+    assert directive.mode == "rules_fallback"
+    assert len(directive.actions) >= 1
+    action_types = {a.type for a in directive.actions}
+    assert ActionType.HEAVY_VEHICLE_RESTRICTION in action_types
+    assert directive.estimated_co2_saved_g > 0.0
+
+
+def test_rules_fallback_nominal_traffic():
+    payload = {
+        "intersection_id": "junction_01",
+        "timestamp": "2026-10-16T12:00:00Z",
+        "idle_ratio": 0.08,
+        "heavy_vehicle_density": 0.04,
+        "n_counted_vehicles": 18,
+        "n_stop_events": 1,
+        "top_choke_zone": None,
+    }
+    directive = generate_fallback_directive(payload)
+    assert directive.mode == "rules_fallback"
+    assert directive.actions[0].type == ActionType.NO_ACTION
+    assert directive.estimated_co2_saved_g == 0.0
+
+
+def test_deterministic_co2_math_consistency(emission_factors):
+    actions = [Action(type=ActionType.EXTEND_GREEN, lane=Lane.N, seconds=10)]
+    payload = {
+        "n_counted_vehicles": 20,
+        "idle_ratio": 0.45,
+        "heavy_vehicle_density": 0.10,
+    }
+    co2_saved = compute_deterministic_co2_saved(actions, payload, factors=emission_factors)
+    assert 5.0 <= co2_saved <= 200.0
+
+
+def test_mocked_llm_exhausted_retries_falls_back(tmp_path):
+    dispatcher = LLMDispatcher(
+        api_key="mock_test_key",
+        directives_path=tmp_path / "directives.jsonl",
+    )
+
+    bad_json = "CORRUPTED_RESPONSE"
+    with patch.object(dispatcher, "_call_llm_raw", side_effect=[bad_json, bad_json]):
+        payload = {"intersection_id": "junction_fail", "idle_ratio": 0.45}
+        directive = dispatcher.dispatch(payload)
+        assert directive.mode == "rules_fallback"
+        assert directive.actions[0].type == ActionType.EXTEND_GREEN
