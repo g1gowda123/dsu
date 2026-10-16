@@ -37,6 +37,18 @@ export const MetricKpiGrid: React.FC<MetricKpiGridProps> = ({
   heavyStopEvents,
   topChokePoint,
 }) => {
+  const carCount = Math.round(totalTracked * 0.32);
+  const bikeCount = Math.round(totalTracked * 0.40);
+  const autoCount = Math.round(totalTracked * 0.15);
+  const busCount = Math.round(totalTracked * 0.08);
+  const truckCount = Math.max(0, totalTracked - carCount - bikeCount - autoCount - busCount);
+
+  const busStops = Math.round(heavyStopEvents * 0.64);
+  const truckStops = Math.max(0, heavyStopEvents - busStops);
+
+  const isIdleBreached = idleShare >= 40.0;
+  const isCriticalChoke = topChokePoint.intensity === 'critical';
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 w-full">
       
@@ -60,11 +72,11 @@ export const MetricKpiGrid: React.FC<MetricKpiGridProps> = ({
         </div>
         {/* Class Breakdown Mini-Badges */}
         <div className="mt-2.5 pt-2 border-t border-[#1f293d] flex items-center justify-between text-[10px] text-slate-400 font-mono">
-          <span title="Car">🚗 132</span>
-          <span title="Motorcycle">🛵 164</span>
-          <span title="Auto-Rickshaw">🛺 62</span>
-          <span title="Bus">🚌 34</span>
-          <span title="Truck">🚛 20</span>
+          <span title="Car">🚗 {carCount}</span>
+          <span title="Motorcycle">🛵 {bikeCount}</span>
+          <span title="Auto-Rickshaw">🛺 {autoCount}</span>
+          <span title="Bus">🚌 {busCount}</span>
+          <span title="Truck">🚛 {truckCount}</span>
         </div>
       </div>
 
@@ -99,24 +111,24 @@ export const MetricKpiGrid: React.FC<MetricKpiGridProps> = ({
         <div className="absolute top-0 right-0 h-16 w-16 bg-rose-500/10 rounded-bl-full pointer-events-none transition-transform group-hover:scale-110" />
         <div className="flex items-center justify-between text-xs text-slate-400 mb-1.5">
           <span className="font-mono uppercase tracking-wider text-[11px] text-slate-400 flex items-center gap-1.5">
-            <Gauge className="h-3.5 w-3.5 text-rose-400" />
+            <Gauge className={`h-3.5 w-3.5 ${isIdleBreached ? 'text-rose-400' : 'text-emerald-400'}`} />
             Corridor Idle Share
           </span>
-          <div className="flex items-center text-[10px] font-mono text-rose-400 font-semibold gap-0.5">
+          <div className={`flex items-center text-[10px] font-mono font-semibold gap-0.5 ${isIdleBreached ? 'text-rose-400' : 'text-emerald-400'}`}>
             <ArrowUpRight className="h-3 w-3" />
-            <span>+4.2%</span>
+            <span>{isIdleBreached ? '+4.2%' : '-2.1%'}</span>
           </div>
         </div>
         <div className="flex items-baseline gap-2">
-          <span className="text-2xl font-bold font-mono tracking-tight text-rose-400 tabular-nums">
+          <span className={`text-2xl font-bold font-mono tracking-tight tabular-nums ${isIdleBreached ? 'text-rose-400' : 'text-emerald-400'}`}>
             {idleShare.toFixed(1)}%
           </span>
           <span className="text-xs text-slate-400">of fleet</span>
         </div>
-        <div className="mt-2.5 pt-2 border-t border-[#1f293d] flex items-center justify-between text-[10px] text-slate-400 font-mono">
-          <div className="flex items-center gap-1 text-rose-400">
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-rose-500 animate-ping" />
-            <span>Exceeds 40% Threshold</span>
+        <div className="mt-2.5 pt-2 border-t border-[#1f293d] flex items-center justify-between text-[10px] font-mono">
+          <div className={`flex items-center gap-1 ${isIdleBreached ? 'text-rose-400' : 'text-emerald-400'}`}>
+            <span className={`inline-block h-1.5 w-1.5 rounded-full ${isIdleBreached ? 'bg-rose-500 animate-ping' : 'bg-emerald-500'}`} />
+            <span>{isIdleBreached ? 'Exceeds 40% Threshold' : 'Green Flow Wave'}</span>
           </div>
           <span className="text-slate-500">3s window</span>
         </div>
@@ -141,24 +153,28 @@ export const MetricKpiGrid: React.FC<MetricKpiGridProps> = ({
           <span className="text-xs text-slate-400">stops / hr</span>
         </div>
         <div className="mt-2.5 pt-2 border-t border-[#1f293d] flex items-center justify-between text-[10px] text-slate-400 font-mono">
-          <span>Bus: 18 stops</span>
+          <span>Bus: {busStops} stops</span>
           <span className="text-slate-600">|</span>
-          <span>Truck: 10 stops</span>
+          <span>Truck: {truckStops} stops</span>
           <span className="text-slate-600">|</span>
           <span className="text-amber-400/90 font-semibold">High Inertia</span>
         </div>
       </div>
 
       {/* CARD 5: Top Choke Point */}
-      <div className="command-card rounded-lg p-3.5 relative overflow-hidden group border-rose-500/30 bg-[#16121f]">
+      <div className={`command-card rounded-lg p-3.5 relative overflow-hidden group border-rose-500/30 ${isCriticalChoke ? 'bg-[#16121f]' : 'bg-[#111827]'}`}>
         <div className="absolute top-0 right-0 h-16 w-16 bg-rose-500/10 rounded-bl-full pointer-events-none" />
         <div className="flex items-center justify-between text-xs text-slate-400 mb-1.5">
           <span className="font-mono uppercase tracking-wider text-[11px] text-rose-300 flex items-center gap-1.5">
             <MapPin className="h-3.5 w-3.5 text-rose-400" />
             Top Choke Point
           </span>
-          <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-rose-600 text-white animate-pulse">
-            CRITICAL
+          <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${
+            isCriticalChoke
+              ? 'bg-rose-600 text-white animate-pulse'
+              : 'bg-amber-600 text-white'
+          }`}>
+            {topChokePoint.intensity.toUpperCase()}
           </span>
         </div>
         <div className="flex items-baseline gap-2">

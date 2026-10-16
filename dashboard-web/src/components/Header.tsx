@@ -31,6 +31,7 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState<string>('11:29:33 IST');
+  const [cpuLoad, setCpuLoad] = useState<number>(38.4);
 
   useEffect(() => {
     const updateTimer = () => {
@@ -39,6 +40,9 @@ export const Header: React.FC<HeaderProps> = ({
       const minutes = String(now.getMinutes()).padStart(2, '0');
       const seconds = String(now.getSeconds()).padStart(2, '0');
       setCurrentTime(`${hours}:${minutes}:${seconds} IST`);
+      // Subtle realistic micro-fluctuation in CPU load around 38.4%
+      const jitter = (Math.random() - 0.5) * 1.8;
+      setCpuLoad(+(38.4 + jitter).toFixed(1));
     };
     const timer = setInterval(updateTimer, 1000);
     return () => clearInterval(timer);
@@ -120,11 +124,25 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Right Section: System Badges & Actions */}
         <div className="flex flex-wrap items-center gap-2">
           
-          {/* Badge: Edge CPU */}
+          {/* Badge: CPU Load */}
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#111827] border border-[#1f293d] text-[11px] font-mono text-slate-300">
             <Cpu className="h-3.5 w-3.5 text-cyan-400" />
-            <span className="text-slate-400">Edge CPU:</span>
-            <span className="font-semibold text-cyan-300">{currentJunction.edgeFps} FPS</span>
+            <span className="text-slate-400">CPU Load:</span>
+            <span className="font-semibold text-cyan-300 tabular-nums">{cpuLoad}%</span>
+          </div>
+
+          {/* Badge: Edge FPS */}
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#111827] border border-[#1f293d] text-[11px] font-mono text-slate-300">
+            <Activity className="h-3.5 w-3.5 text-emerald-400" />
+            <span className="text-slate-400">FPS:</span>
+            <span className="font-semibold text-emerald-300 tabular-nums">{currentJunction.edgeFps.toFixed(1)}</span>
+          </div>
+
+          {/* Badge: Bandwidth */}
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#111827] border border-[#1f293d] text-[11px] font-mono text-slate-300">
+            <Wifi className="h-3.5 w-3.5 text-sky-400" />
+            <span className="text-slate-400">Bandwidth:</span>
+            <span className="font-semibold text-sky-300 tabular-nums">{currentJunction.uplinkKbMin.toFixed(1)} KB/min</span>
           </div>
 
           {/* Badge: Privacy */}
@@ -134,22 +152,15 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="font-bold">Zero-PII Egress</span>
           </div>
 
-          {/* Badge: Uplink */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#111827] border border-[#1f293d] text-[11px] font-mono text-slate-300">
-            <Wifi className="h-3.5 w-3.5 text-sky-400" />
-            <span className="text-slate-400">Uplink:</span>
-            <span className="font-semibold text-sky-300">{currentJunction.uplinkKbMin} KB/min</span>
-          </div>
-
           {/* Badge: Mode */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-950/30 border border-amber-500/30 text-[11px] font-mono text-amber-300">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-950/30 border border-amber-500/30 text-[11px] font-mono text-amber-300 hidden xl:flex">
             <Radio className="h-3.5 w-3.5 text-amber-400 animate-pulse" />
             <span className="text-amber-400/80">Mode:</span>
             <span className="font-bold">Active Twin</span>
           </div>
 
           {/* Clock */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#090d16] border border-[#1f293d] text-[11px] font-mono text-slate-400">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#090d16] border border-[#1f293d] text-[11px] font-mono text-slate-400 hidden sm:flex">
             <Clock className="h-3.5 w-3.5 text-slate-500" />
             <span className="tabular-nums font-medium text-slate-200">{currentTime}</span>
           </div>
@@ -164,14 +175,14 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="hidden md:inline">Factor Spec</span>
           </button>
 
-          {/* Export Audit Report */}
+          {/* Export Audit Bundle Button */}
           <button
             onClick={onExportAudit}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-600 hover:bg-emerald-500 text-slate-950 text-[11px] font-bold transition-all shadow-md cursor-pointer"
-            title="Export ICCC Telemetry & Audit Report"
+            className="flex items-center gap-1.5 px-3 py-1 rounded-md bg-emerald-600 hover:bg-emerald-500 text-slate-950 text-[11px] font-bold transition-all shadow-md hover:shadow-emerald-500/20 cursor-pointer"
+            title="Export complete ICCC Telemetry & Audit Bundle (.json)"
           >
             <Download className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Export Audit</span>
+            <span>Export Audit Bundle</span>
           </button>
 
         </div>

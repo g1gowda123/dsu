@@ -53,6 +53,78 @@ export interface SpatialChokeGridProps {
   zones?: SpatialZoneData[];
   onSelectZone?: (zone: SpatialZoneData) => void;
   className?: string;
+  currentTimeSec?: number;
+}
+
+/* =========================================================================
+   Dynamic Choke Zone Scaler based on Timeline Scrubbing
+   ========================================================================= */
+
+export function computeDynamicSpatialZones(
+  currentTimeSec: number,
+  baseZones: SpatialZoneData[] = DEFAULT_SPATIAL_ZONES
+): SpatialZoneData[] {
+  // Cycle progression:
+  // 0 - 24s: Initial movement / moderate idle
+  // 24 - 68s: Red Phase stopline queue build-up on North Corridor
+  // 68 - 90s: Green wave discharge
+  // 90 - 120s: Steady flow
+  return baseZones.map((zone) => {
+    let multiplier = 1.0;
+    let countMultiplier = 1.0;
+
+    const isNorthStopline = zone.id === 'z_r1_c2'; // Critical choke Z_1_2
+    const isNorthCorridor = zone.id === 'z_r0_c2' || zone.id === 'z_r0_c1';
+    const isSouthStopline = zone.id === 'z_r2_c1';
+
+    if (currentTimeSec < 24) {
+      const ratio = Math.max(0.15, currentTimeSec / 24);
+      multiplier = isNorthStopline ? 0.35 + ratio * 0.35 : 0.4 + ratio * 0.3;
+      countMultiplier = isNorthStopline ? 0.3 + ratio * 0.4 : 0.4 + ratio * 0.3;
+    } else if (currentTimeSec >= 24 && currentTimeSec <= 68) {
+      // Red Phase: Queue climbs up drastically
+      const prog = (currentTimeSec - 24) / 44; // 0 to 1
+      if (isNorthStopline) {
+        multiplier = 0.7 + prog * 0.85; // reaches 1.55x base (~3.8 min)
+        countMultiplier = 0.7 + prog * 0.8;
+      } else if (isNorthCorridor || isSouthStopline) {
+        multiplier = 0.6 + prog * 0.65;
+        countMultiplier = 0.6 + prog * 0.6;
+      } else {
+        multiplier = 0.8 + prog * 0.3;
+        countMultiplier = 0.8 + prog * 0.25;
+      }
+    } else if (currentTimeSec > 68 && currentTimeSec <= 90) {
+      // Green Phase: Queue dissipates
+      const prog = (currentTimeSec - 68) / 22; // 0 to 1
+      if (isNorthStopline) {
+        multiplier = Math.max(0.35, 1.55 - prog * 1.15);
+        countMultiplier = Math.max(0.15, 1.5 - prog * 1.3);
+      } else if (isNorthCorridor) {
+        multiplier = Math.max(0.35, 1.25 - prog * 0.85);
+        countMultiplier = Math.max(0.2, 1.2 - prog * 0.95);
+      } else {
+        multiplier = Math.max(0.4, 1.1 - prog * 0.5);
+        countMultiplier = Math.max(0.3, 1.05 - prog * 0.5);
+      }
+    } else {
+      multiplier = isNorthStopline ? 0.65 : 0.7;
+      countMultiplier = 0.6;
+    }
+
+    const dynamicIdleMins = +(zone.idle_vehicle_minutes * multiplier).toFixed(2);
+    const dynamicIdlingCount = Math.max(1, Math.round(zone.idling_vehicles_count * countMultiplier));
+    const dynamicCo2 = Math.round(zone.estimated_excess_idle_co2_g * multiplier);
+    const dynamicHeavy = Math.max(0, Math.round(zone.heavy_vehicles_count * countMultiplier));
+
+    return {
+      ...zone,
+      idle_vehicle_minutes: dynamicIdleMins,
+      idling_vehicles_count: dynamicIdlingCount,
+      estimated_excess_idle_co2_g: dynamicCo2,
+      heavy_vehicles_count: dynamicHeavy,
+    };
+  });
 }
 
 /* =========================================================================
@@ -389,24 +461,33 @@ export const SpatialChokeGrid: React.FC<SpatialChokeGridProps> = ({
   zones = DEFAULT_SPATIAL_ZONES,
   onSelectZone,
   className = '',
+  currentTimeSec,
 }) => {
   // Focus / selected zone state (default to top choke zone Z_1_2)
   const [selectedZoneId, setSelectedZoneId] = useState<string>('z_r1_c2');
   const [hoveredZoneId, setHoveredZoneId] = useState<string | null>(null);
   const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState<boolean>(false);
 
+  // Compute synchronized dynamic zones when currentTimeSec is provided
+  const activeZones = useMemo(() => {
+    if (currentTimeSec !== undefined) {
+      return computeDynamicSpatialZones(currentTimeSec, zones);
+    }
+    return zones;
+  }, [currentTimeSec, zones]);
+
   // Active zone (either hovered or pinned selection)
   const activeZone = useMemo(() => {
     const targetId = hoveredZoneId || selectedZoneId;
-    return zones.find((z) => z.id === targetId) || zones[0];
-  }, [zones, hoveredZoneId, selectedZoneId]);
+    return activeZones.find((z) => z.id === targetId) || activeZones[0];
+  }, [activeZones, hoveredZoneId, selectedZoneId]);
 
-  // Ranked Top 3 Choke Points
+  // Ranked Top 3 Choke Points dynamically computed from activeZones
   const top3ChokeZones = useMemo(() => {
-    return [...zones]
+    return [...activeZones]
       .sort((a, b) => b.idle_vehicle_minutes - a.idle_vehicle_minutes)
       .slice(0, 3);
-  }, [zones]);
+  }, [activeZones]);
 
   const handleCellClick = (zone: SpatialZoneData) => {
     setSelectedZoneId(zone.id);
@@ -444,9 +525,17 @@ export const SpatialChokeGrid: React.FC<SpatialChokeGridProps> = ({
             </div>
           </div>
 
-          <div className="text-[11px] font-mono text-slate-400 flex items-center gap-1">
-            <Flame className="h-3.5 w-3.5 text-rose-500" />
-            <span>Telemetry: Cumulative Idle Veh-Mins</span>
+          <div className="flex items-center gap-2">
+            {currentTimeSec !== undefined && (
+              <span className="flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950/60 border border-emerald-500/30 text-emerald-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                TIMELINE SYNC: {Math.floor(currentTimeSec)}s
+              </span>
+            )}
+            <div className="text-[11px] font-mono text-slate-400 flex items-center gap-1">
+              <Flame className="h-3.5 w-3.5 text-rose-500" />
+              <span>Cumulative Idle Veh-Mins</span>
+            </div>
           </div>
 
         </div>
@@ -492,7 +581,7 @@ export const SpatialChokeGrid: React.FC<SpatialChokeGridProps> = ({
         {/* The 16-Cell 4x4 Grid */}
         <div className="grid grid-cols-4 gap-2.5 p-2 rounded-xl bg-[#090d16] border border-[#1f293d] relative select-none">
           
-          {zones.map((zone) => {
+          {activeZones.map((zone) => {
             const isSelected = selectedZoneId === zone.id;
             const isHovered = hoveredZoneId === zone.id;
             const style = getCellColorStyle(zone.idle_vehicle_minutes, isSelected);
