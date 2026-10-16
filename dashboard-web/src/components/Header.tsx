@@ -157,11 +157,14 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Methodology Button */}
           <button
             onClick={onOpenMethodology}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#111827] border border-[#1f293d] hover:border-emerald-500/50 hover:bg-[#162032] text-[11px] font-medium text-slate-300 transition-all cursor-pointer"
-            title="Inspect CPCB & EPA BS-VI Emission Factors"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#111827] border border-[#1f293d] hover:border-emerald-500/50 hover:bg-[#162032] text-[11px] font-medium text-slate-300 transition-all cursor-pointer shadow-sm hover:text-emerald-300"
+            title="Audit Methodology & Factors"
+            aria-label="Audit Methodology & Factors"
           >
-            <FileText className="h-3.5 w-3.5 text-emerald-400" />
-            <span className="hidden md:inline">Factor Spec</span>
+            <FileText className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+            <span className="hidden lg:inline">Audit Methodology &amp; Factors</span>
+            <span className="hidden sm:inline lg:hidden">Methodology &amp; Factors</span>
+            <span className="sm:hidden">Methodology</span>
           </button>
 
           {/* Export Audit Report */}
