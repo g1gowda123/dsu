@@ -1,0 +1,26 @@
+model: "models/finetuned/best.pt"
+device: "cpu"
+active_classes:
+  - car
+  - motorcycle
+  - auto_rickshaw
+  - bus
+  - truck
+imgsz: 640
+frame_skip: 2
+confidence: 0.30
+min_track_age_frames: 15
+ema_alpha: 0.3
+state_thresholds:
+  idle_v_kmh: 2
+  idle_min_seconds: 3
+  cruise_low_kmh: 15
+  cruise_high_kmh: 50
+dispatcher:
+  trigger_interval_twin_s: 30
+  llm_provider: "gemini"
+  model_name: "gemini-2.0-flash"
+camera:
+  name: "junction_01"
+video_source: "data/videos/junction.mp4"
+artifacts_dir: "artifacts"

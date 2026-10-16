@@ -1,0 +1,137 @@
+[
+  {
+    "candidate": {
+      "id": "candidate_1",
+      "name": "Candidate 1: Delhi Congested Intersection",
+      "path": "assets_workspace/candidates/candidate_1_delhi.mp4",
+      "source_url": "https://www.youtube.com/watch?v=iEIk3RpV6RA",
+      "uploader": "Sound Spirit",
+      "license": "Creative Commons Attribution license (reuse allowed) (CC BY 3.0 / CC BY 4.0)",
+      "location": "New Delhi, India"
+    },
+    "meta": {
+      "fps": 25.0,
+      "total_frames": 2412,
+      "width": 1920,
+      "height": 1080,
+      "resolution": "1920x1080",
+      "duration_s": 96.48
+    },
+    "valid_frames_sampled": 30,
+    "mean_vehicles_per_frame": 2.33,
+    "mean_brightness": 98.2,
+    "pct_frames_with_bus_or_truck": 30.0,
+    "class_counts_total": {
+      "auto_rickshaw": 5,
+      "motorcycle": 38,
+      "car": 17,
+      "bus": 0,
+      "truck": 10
+    },
+    "per_frame_averages": {
+      "auto_rickshaw": 0.17,
+      "motorcycle": 1.27,
+      "car": 0.57,
+      "bus": 0.0,
+      "truck": 0.33
+    },
+    "gates": {
+      "density_8_to_25": false,
+      "autos_present": true,
+      "two_wheelers_present": true,
+      "heavy_present": true,
+      "good_lighting": true,
+      "eligible": false
+    }
+  },
+  {
+    "candidate": {
+      "id": "candidate_2",
+      "name": "Candidate 2: Vikram 450d Urban Traffic",
+      "path": "assets_workspace/candidates/candidate_2_vikram.mp4",
+      "source_url": "https://www.youtube.com/watch?v=av4txy2jYCI",
+      "uploader": "Vikram 450d",
+      "license": "Creative Commons Attribution license (reuse allowed) (CC BY 3.0 / CC BY 4.0)",
+      "location": "Urban Roadway, India"
+    },
+    "meta": {
+      "fps": 30.0,
+      "total_frames": 8011,
+      "width": 1920,
+      "height": 1080,
+      "resolution": "1920x1080",
+      "duration_s": 267.03333333333336
+    },
+    "valid_frames_sampled": 30,
+    "mean_vehicles_per_frame": 3.3,
+    "mean_brightness": 138.4,
+    "pct_frames_with_bus_or_truck": 20.0,
+    "class_counts_total": {
+      "auto_rickshaw": 7,
+      "motorcycle": 65,
+      "car": 20,
+      "bus": 0,
+      "truck": 7
+    },
+    "per_frame_averages": {
+      "auto_rickshaw": 0.23,
+      "motorcycle": 2.17,
+      "car": 0.67,
+      "bus": 0.0,
+      "truck": 0.23
+    },
+    "gates": {
+      "density_8_to_25": false,
+      "autos_present": true,
+      "two_wheelers_present": true,
+      "heavy_present": true,
+      "good_lighting": true,
+      "eligible": false
+    }
+  },
+  {
+    "candidate": {
+      "id": "candidate_3",
+      "name": "Candidate 3: Tank Bund Hyderabad Traffic",
+      "path": "assets_workspace/candidates/candidate_3_hyderabad.mp4",
+      "source_url": "https://www.youtube.com/watch?v=WdFFCCUi0-8",
+      "uploader": "Creative Commons",
+      "license": "Creative Commons Attribution license (reuse allowed) (CC BY 3.0 / CC BY 4.0)",
+      "location": "Tank Bund, Hyderabad, India"
+    },
+    "meta": {
+      "fps": 29.97002997002997,
+      "total_frames": 3004,
+      "width": 1920,
+      "height": 1080,
+      "resolution": "1920x1080",
+      "duration_s": 100.23346666666667
+    },
+    "valid_frames_sampled": 30,
+    "mean_vehicles_per_frame": 1.37,
+    "mean_brightness": 122.7,
+    "pct_frames_with_bus_or_truck": 10.0,
+    "class_counts_total": {
+      "auto_rickshaw": 2,
+      "motorcycle": 23,
+      "car": 12,
+      "bus": 0,
+      "truck": 4
+    },
+    "per_frame_averages": {
+      "auto_rickshaw": 0.07,
+      "motorcycle": 0.77,
+      "car": 0.4,
+      "bus": 0.0,
+      "truck": 0.13
+    },
+    "gates": {
+      "density_8_to_25": false,
+      "autos_present": true,
+      "two_wheelers_present": true,
+      "heavy_present": true,
+      "good_lighting": true,
+      "eligible": false
+    }
+  }
+]

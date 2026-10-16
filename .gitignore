@@ -1,0 +1,15 @@
+.env
+data/videos/*.mp4
+!data/videos/.gitkeep
+artifacts/*
+!artifacts/.gitkeep
+docs/*
+!docs/.gitkeep
+!docs/*.md
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+*.pt
+!models/finetuned/best.pt
+*.onnx
