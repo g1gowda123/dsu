@@ -5,7 +5,7 @@ import { Header } from '@/components/Header';
 import { MetricKpiGrid } from '@/components/MetricKpiGrid';
 import { CctvPlayer } from '@/components/CctvPlayer';
 import { RollingEmissionChart } from '@/components/RollingEmissionChart';
-import { SpatialChokeMatrix } from '@/components/SpatialChokeMatrix';
+import { SpatialChokeGrid } from '@/components/SpatialChokeGrid';
 import { MunicipalDispatchFeed } from '@/components/MunicipalDispatchFeed';
 import { SimulationStudio } from '@/components/SimulationStudio';
 import { MethodologyModal } from '@/components/MethodologyModal';
@@ -184,11 +184,7 @@ export default function DashboardPage() {
 
           {/* Column Right (40% ~ 5 cols): Spatial Choke Matrix & Municipal Dispatch Feed */}
           <div className="lg:col-span-5 flex flex-col gap-4">
-            <SpatialChokeMatrix
-              zones={zones}
-              selectedZone={selectedZone}
-              onSelectZone={setSelectedZone}
-            />
+            <SpatialChokeGrid />
 
             <MunicipalDispatchFeed
               directives={directives}
