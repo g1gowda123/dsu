@@ -20,6 +20,7 @@ import {
   ChokeZone,
   MunicipalDirective,
   SimulationParams,
+  TelemetryPoint,
 } from '@/types/dashboard';
 import { CheckCircle2, Download, X } from 'lucide-react';
 
@@ -27,11 +28,13 @@ export default function DashboardPage() {
   // Junction state
   const [currentJunction, setCurrentJunction] = useState<JunctionMetadata>(JUNCTIONS[0]);
 
-  // Telemetry data
-  const telemetryData = useMemo(() => generateTelemetryData(), []);
+  // Telemetry data & duration (reflecting real 96.5s CCTV telemetry data)
+  const [telemetryData, setTelemetryData] = useState<TelemetryPoint[]>(() => generateTelemetryData());
+  const [durationSec, setDurationSec] = useState<number>(96.5);
+  const [vehiclesByTime, setVehiclesByTime] = useState<Record<string, any>>({});
 
   // Playback state
-  const [currentTimeSec, setCurrentTimeSec] = useState<number>(36); // Start around choke peak
+  const [currentTimeSec, setCurrentTimeSec] = useState<number>(24); // Start around choke onset
   const [isPlaying, setIsPlaying] = useState<boolean>(true);
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1);
 
@@ -62,20 +65,67 @@ export default function DashboardPage() {
   const [isMethodologyOpen, setIsMethodologyOpen] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Playback loop
+  // Ingestion: Fetch live backend telemetry and municipal directives from API
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadBackendData() {
+      // 1. Ingest Telemetry
+      try {
+        const telRes = await fetch('/api/telemetry');
+        if (telRes.ok) {
+          const telJson = await telRes.json();
+          if (isMounted && telJson.points && telJson.points.length > 0) {
+            setTelemetryData(telJson.points);
+            if (telJson.durationSec || telJson.maxTimeSec) {
+              setDurationSec(telJson.durationSec || telJson.maxTimeSec);
+            }
+            if (telJson.vehiclesByTime) {
+              setVehiclesByTime(telJson.vehiclesByTime);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Backend telemetry unavailable, using fallback mock cache:', err);
+      }
+
+      // 2. Ingest Directives
+      try {
+        const dirRes = await fetch('/api/directives');
+        if (dirRes.ok) {
+          const dirJson = await dirRes.json();
+          if (isMounted) {
+            const list = Array.isArray(dirJson) ? dirJson : dirJson.directives;
+            if (list && list.length > 0) {
+              setDirectives(list);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Backend directives unavailable, using fallback mock cache:', err);
+      }
+    }
+
+    loadBackendData();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Playback loop bound to real duration (96.5s)
   useEffect(() => {
     if (!isPlaying) return;
 
     const intervalMs = 1000 / playbackSpeed;
     const timer = setInterval(() => {
       setCurrentTimeSec((prev) => {
-        if (prev >= 120) return 0;
+        if (prev >= durationSec) return 0;
         return prev + 1;
       });
     }, intervalMs);
 
     return () => clearInterval(timer);
-  }, [isPlaying, playbackSpeed]);
+  }, [isPlaying, playbackSpeed, durationSec]);
 
   // Current Telemetry slice
   const currentTelemetry = useMemo(() => {
@@ -86,12 +136,26 @@ export default function DashboardPage() {
     );
   }, [currentTimeSec, telemetryData]);
 
-  // Handlers for Directives
-  const handleApproveDirective = (id: string) => {
+  // Handlers for Directives with backend persistence
+  const handleApproveDirective = async (id: string) => {
+    // Optimistic UI update
     setDirectives((prev) =>
       prev.map((d) => (d.id === id ? { ...d, status: 'approved' as const } : d))
     );
-    showToast(`Directive ${id} approved. Ready to dispatch.`);
+    showToast(`Directive ${id} approved. Appending operator sign-off...`);
+
+    try {
+      const res = await fetch('/api/directives/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, approvedBy: 'Traffic_Control_Officer_01' }),
+      });
+      if (res.ok) {
+        showToast(`Directive ${id} signed and persisted to municipal ledger.`);
+      }
+    } catch (err) {
+      console.warn('Failed to persist approval flag to backend API:', err);
+    }
   };
 
   const handleDispatchToAtcs = (id: string) => {
@@ -173,6 +237,8 @@ export default function DashboardPage() {
               playbackSpeed={playbackSpeed}
               onChangeSpeed={setPlaybackSpeed}
               activeStateCounts={currentTelemetry.byStateCount}
+              maxTimeSec={durationSec}
+              vehiclesByTime={vehiclesByTime}
             />
 
             <RollingEmissionChart

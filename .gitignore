@@ -14,6 +14,8 @@ artifacts/*
 !artifacts/telemetry_meta.json
 !artifacts/perception_stats.json
 !artifacts/events.jsonl
+!artifacts/telemetry_series.json
+!artifacts/approvals.jsonl
 docs/*
 !docs/.gitkeep
 !docs/*.md

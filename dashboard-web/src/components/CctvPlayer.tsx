@@ -32,6 +32,8 @@ interface CctvPlayerProps {
     CRUISE: number;
     DECEL: number;
   };
+  maxTimeSec?: number;
+  vehiclesByTime?: Record<string, BoundingBox[]>;
 }
 
 const STATE_CONFIG: Record<
@@ -76,14 +78,21 @@ export const CctvPlayer: React.FC<CctvPlayerProps> = ({
   playbackSpeed,
   onChangeSpeed,
   activeStateCounts,
+  maxTimeSec = 96.5,
+  vehiclesByTime,
 }) => {
   const [vehicles, setVehicles] = useState<BoundingBox[]>([]);
   const [selectedFilter, setSelectedFilter] = useState<KinematicState | 'ALL'>('ALL');
   const [showConfidence, setShowConfidence] = useState(true);
 
   useEffect(() => {
-    setVehicles(getVehiclesAtTime(currentTimeSec));
-  }, [currentTimeSec]);
+    const bucketKey = String(Math.floor(currentTimeSec / 2) * 2);
+    if (vehiclesByTime && vehiclesByTime[bucketKey] && vehiclesByTime[bucketKey].length > 0) {
+      setVehicles(vehiclesByTime[bucketKey]);
+    } else {
+      setVehicles(getVehiclesAtTime(currentTimeSec));
+    }
+  }, [currentTimeSec, vehiclesByTime]);
 
   const filteredVehicles =
     selectedFilter === 'ALL'
@@ -274,7 +283,7 @@ export const CctvPlayer: React.FC<CctvPlayerProps> = ({
             <input
               type="range"
               min="0"
-              max="120"
+              max={Math.ceil(maxTimeSec)}
               step="1"
               value={currentTimeSec}
               onChange={(e) => onTimeChange(Number(e.target.value))}
@@ -282,17 +291,19 @@ export const CctvPlayer: React.FC<CctvPlayerProps> = ({
             />
             {/* Visual Markers for Choke Spikes on Timeline */}
             <div
-              className="absolute left-[20%] top-0 bottom-0 w-0.5 bg-rose-500/80 pointer-events-none"
+              className="absolute top-0 bottom-0 w-0.5 bg-rose-500/80 pointer-events-none"
+              style={{ left: `${Math.min(100, (24 / maxTimeSec) * 100)}%` }}
               title="Red Phase Start (24s)"
             />
             <div
-              className="absolute left-[56.6%] top-0 bottom-0 w-0.5 bg-emerald-500/80 pointer-events-none"
+              className="absolute top-0 bottom-0 w-0.5 bg-emerald-500/80 pointer-events-none"
+              style={{ left: `${Math.min(100, (68 / maxTimeSec) * 100)}%` }}
               title="Green Phase Discharge (68s)"
             />
           </div>
 
           <span className="text-xs font-mono text-slate-500 tabular-nums min-w-[42px]">
-            02:00
+            {formatTime(maxTimeSec)}
           </span>
         </div>
 
