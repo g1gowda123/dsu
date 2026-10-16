@@ -65,7 +65,7 @@ def extract_events(
     df: pd.DataFrame,
     min_age: int = 15,
     dt_s: float = 0.08,
-    min_idle_s: float = 3.0,
+    min_idle_s: float = 1.0,
 ) -> List[Dict[str, Any]]:
     """Derive telemetry events: vehicle_counted, stop_started, stop_ended.
 

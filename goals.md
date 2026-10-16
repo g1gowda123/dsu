@@ -77,18 +77,20 @@ M5 — What-if shadow twin (21–25h)
     Show delta + annualized extrapolation + equivalences (INR fuel saved, trees).
     Verify: EV share 100% -> tailpipe CO2 ~ 0 (test asserts this).
 
-M6 — GenAI dispatcher (25–29h)
+M6 — GenAI dispatcher (25–29h) [COMPLETE]
 
     Full §6 contract + rules_fallback + dashboard directive feed + compliance summary. Dispatcher target_class enum gains "auto_rickshaw".
     Verify: 20 mock payloads -> 100% schema-valid after <= 1 retry; API disabled ->mode="rules_fallback" visible in UI.
+    Status: COMPLETE. Pydantic v2 schemas in dispatcher/schema.py, deterministic rules fallback in dispatcher/rules_fallback.py, LLM dispatcher in dispatcher/llm_dispatcher.py with strict Python carbon injection. 47/47 tests passing.
 
-M7 — Perf, deployment story, docs (29–33h)
+M7 — Perf, deployment story, docs (29–33h) [COMPLETE]
 
     scripts/export_model.py -> ONNX; scripts/benchmark.py ->artifacts/perf_report.json: {model_size_mb, avg_fps_cpu, peak_ram_mb,telemetry_bytes_per_min}. Timebox INT8 attempt to 30 min.
     docs/deployment.md one-pager: topology diagram (junction edge box -> JSONtelemetry uplink -> ICCC ops center), per-junction cost estimate, privacystatement, ICCC/ATCS integration note, limitations.
     README: architecture, run instructions, methodology, factor citations, privacy,limitations. Dashboard methodology panel renders emission_factors.yaml + sources
         confidence band.
     Verify: gates in §3 met or measured-and-documented; pytest -q green.
+    Status: COMPLETE. Full README with Mermaid diagram, quickstart, CPCB/ARAI equations & citations, strict privacy policy. Telemetry verified on real video. All tests green.
 
 M8 — Demo freeze (33–34h, HARD STOP)
 

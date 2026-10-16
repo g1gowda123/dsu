@@ -1,0 +1,135 @@
+{
+  "$defs": {
+    "Action": {
+      "description": "An atomic traffic intervention directive.",
+      "properties": {
+        "type": {
+          "$ref": "#/$defs/ActionType"
+        },
+        "lane": {
+          "anyOf": [
+            {
+              "enum": [
+                "N",
+                "S",
+                "E",
+                "W"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lane"
+        },
+        "seconds": {
+          "anyOf": [
+            {
+              "maximum": 15,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Seconds"
+        },
+        "target_class": {
+          "anyOf": [
+            {
+              "enum": [
+                "car",
+                "motorcycle",
+                "auto_rickshaw",
+                "bus",
+                "truck"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Class"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "Action",
+      "type": "object"
+    },
+    "ActionType": {
+      "description": "Permitted signal intervention types.",
+      "enum": [
+        "extend_green",
+        "green_wave_priority",
+        "heavy_vehicle_restriction",
+        "no_action"
+      ],
+      "title": "ActionType",
+      "type": "string"
+    }
+  },
+  "description": "Municipal traffic signal timing directive emitted by dispatcher.",
+  "properties": {
+    "directive_id": {
+      "title": "Directive Id",
+      "type": "string"
+    },
+    "timestamp": {
+      "title": "Timestamp",
+      "type": "string"
+    },
+    "intersection_id": {
+      "title": "Intersection Id",
+      "type": "string"
+    },
+    "actions": {
+      "items": {
+        "$ref": "#/$defs/Action"
+      },
+      "title": "Actions",
+      "type": "array"
+    },
+    "estimated_co2_saved_g": {
+      "minimum": 0.0,
+      "title": "Estimated Co2 Saved G",
+      "type": "number"
+    },
+    "confidence": {
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Confidence",
+      "type": "number"
+    },
+    "rationale": {
+      "maxLength": 300,
+      "title": "Rationale",
+      "type": "string"
+    },
+    "mode": {
+      "enum": [
+        "llm",
+        "rules_fallback"
+      ],
+      "title": "Mode",
+      "type": "string"
+    }
+  },
+  "required": [
+    "intersection_id",
+    "actions",
+    "estimated_co2_saved_g",
+    "confidence",
+    "rationale",
+    "mode"
+  ],
+  "title": "Directive",
+  "type": "object"
+}

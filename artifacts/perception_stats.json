@@ -1,0 +1,27 @@
+{
+  "n_unique_tracks": 124,
+  "track_length_p50": 8.0,
+  "track_length_p90": 52.10000000000001,
+  "churn_pct": 70.16,
+  "class_histogram": {
+    "motorcycle": 1165,
+    "car": 780,
+    "truck": 346,
+    "auto_rickshaw": 46,
+    "bus": 7
+  },
+  "state_distribution": {
+    "UNINIT": 1528,
+    "CRUISE": 516,
+    "ACCEL": 149,
+    "DECEL": 134,
+    "IDLE": 17
+  },
+  "mean_speed_kmh_per_class": {
+    "auto_rickshaw": 3.79,
+    "bus": 106.75,
+    "car": 6.87,
+    "motorcycle": 5.08,
+    "truck": 9.13
+  }
+}

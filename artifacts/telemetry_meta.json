@@ -1,0 +1,15 @@
+{
+  "video_fps": 25.0,
+  "frame_skip": 2,
+  "dt_s": 0.08,
+  "img_w": 1280,
+  "img_h": 720,
+  "min_track_age_frames": 15,
+  "class_map": {
+    "0": "auto_rickshaw",
+    "1": "bus",
+    "2": "car",
+    "3": "motorcycle",
+    "4": "truck"
+  }
+}

@@ -292,7 +292,24 @@ def main() -> None:
         help="Path to app.yaml configuration file.",
     )
 
+    parser.add_argument(
+        "--mock",
+        action="store_true",
+        help="Generate synthetic mock telemetry instead of running inference on video.",
+    )
+
     args = parser.parse_args()
+    if args.mock:
+        from scripts.make_synthetic_telemetry import generate_synthetic_telemetry
+        out_dir = Path(args.output_dir) if args.output_dir else REPO_ROOT / "artifacts"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        duration = args.max_seconds or 120.0
+        print(f"[Pipeline] --mock requested: generating {duration}s synthetic telemetry...")
+        df_mock = generate_synthetic_telemetry(duration_s=duration, n_vehicles=30, seed=42)
+        df_mock.to_parquet(out_dir / "telemetry.parquet", engine="pyarrow", index=False)
+        print(f"[Pipeline] Saved synthetic telemetry to {out_dir / 'telemetry.parquet'}")
+        return
+
     run_pipeline(
         input_source=args.input,
         output_dir=args.output_dir,
