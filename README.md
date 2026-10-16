@@ -119,6 +119,22 @@ Open `http://localhost:3000` in your browser to interact with the modern Next.js
 - **Deterministic CO2 Savings Badge**: Highlighting `⚡ 1,246.7 g CO2 Avoided` with tooltip *"Computed via CPCB mode-bin engine, never LLM hallucination"*.
 - **One-Click Dispatch**: Direct push to ATCS/SCATS with simulated transmission ping, plus multi-dimensional status and mode filters with full-text search.
 
+### Step 7: Swapping Junction Video (At Will)
+
+You can swap out the junction video at any time using either the UI or the terminal:
+
+**Method A: In the Web UI**
+1. Click the **"↑ Swap Video"** button in the CCTV player top bar.
+2. Pick any `.mp4`, `.webm`, `.mkv`, or `.mov` from your computer.
+3. The video instantly plays with synchronized telemetry overlays and is persisted to the edge server.
+4. Click **"Reset"** to return to the default feed.
+
+**Method B: Via CLI Command**
+```bash
+python scripts/swap_video.py /path/to/any_video.mp4
+```
+*(Automatically transcodes to 720p H.264 `+faststart`, updates web public assets, and re-renders the perception overlay)*.
+
 ---
 
 ## 4. Edge-to-ICCC Deployment Topology

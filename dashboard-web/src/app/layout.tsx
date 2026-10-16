@@ -1,22 +1,43 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
 import "./globals.css";
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://carbontrack.vercel.app";
+
 export const metadata: Metadata = {
-  title: "ECO-KINETIC TWIN // Municipal Carbon Intelligence",
+  title: "CarbonTrack — Junction CO₂ Ops",
   description:
-    "Production-Grade Edge AI Municipal Traffic Carbon Intelligence Platform & Policy Simulation Studio",
+    "Municipal traffic-carbon operations console: live CO₂ telemetry from CCTV vehicle tracking, AI signal directives, and what-if policy simulation for the Junction 01 corridor.",
+  metadataBase: new URL(APP_URL),
+  applicationName: "CarbonTrack",
+  keywords: ["traffic", "carbon", "telemetry", "signal control", "CCTV", "operations"],
+  openGraph: {
+    type: "website",
+    title: "CarbonTrack — Junction CO₂ Ops",
+    description:
+      "Live CO₂ telemetry from CCTV vehicle tracking, AI signal directives and what-if policy simulation.",
+    siteName: "CarbonTrack",
+    url: "/",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "CarbonTrack — Junction CO₂ Ops",
+    description:
+      "Live CO₂ telemetry from CCTV vehicle tracking, AI signal directives and what-if policy simulation.",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0b0d0e",
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className="dark">
-      <body className="min-h-screen bg-[#090d16] text-slate-100 antialiased selection:bg-emerald-500/20 selection:text-emerald-400 font-sans">
-        {children}
-      </body>
+    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
+      <body className="antialiased">{children}</body>
     </html>
   );
 }

@@ -593,7 +593,7 @@ export const MunicipalDispatchFeed: React.FC<MunicipalDispatchFeedProps> = ({
             return (
               <div
                 key={cardId}
-                className={`p-4 rounded-xl border transition-all relative overflow-hidden flex flex-col gap-3 ${
+                className={`shrink-0 min-h-fit p-4 rounded-xl border transition-all relative overflow-hidden flex flex-col gap-3 ${
                   isDispatched
                     ? 'bg-gradient-to-b from-[#0c1a17] to-[#0a1413] border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.12)]'
                     : isDismissed

@@ -229,3 +229,25 @@ When handing off this project to another LLM, enforce the following non-negotiab
 | `artifacts/directives_mock.jsonl` | Complete | 10 diverse mock directives for frontend contract |
 | `artifacts/directives.jsonl` | Complete | Append-only municipal directives log with fallback entries |
 | `artifacts/demo_backup.mp4` | **Pending** | 2-3 minute backup video recording |
+| `dashboard-web/public/junction.mp4` | Complete | Active raw CCTV video stream (auto-synced) |
+| `dashboard-web/public/overlay.mp4` | Complete | H.264 fast-start AI overlay video feed (auto-synced from render_overlay.py) |
+| `scripts/swap_video.py` | Complete | CLI utility to swap CCTV video, transcode H.264, and refresh web assets |
+| `dashboard-web/src/app/api/video/upload/route.ts` | Complete | REST API route for instant multipart video upload & persistence |
+
+### 📹 Video Swapping Workflows (At Will)
+
+#### Method 1: Directly in the Web UI
+1. Click the **"↑ Swap Video"** button located in the CCTV player top bar.
+2. Select any `.mp4`, `.webm`, `.mkv`, or `.mov` video file from your local machine.
+3. The video instantly loads via browser `URL.createObjectURL` and begins playing with real-time HUD overlays.
+4. It is automatically persisted to `dashboard-web/public/junction.mp4` and `data/videos/junction.mp4` via the `/api/video/upload` endpoint so it remains active across reloads.
+5. Click **"Reset"** at any time to return to the default junction feed.
+
+#### Method 2: Via Terminal CLI
+Run the automated swap utility:
+```bash
+python scripts/swap_video.py /path/to/any_video.mp4
+```
+*(Automatically normalizes codec to 720p H.264 `+faststart`, updates both public web feeds, and re-renders `artifacts/overlay.mp4`).*
+
+

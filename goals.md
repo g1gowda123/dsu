@@ -109,3 +109,9 @@ M8 — Demo freeze (33–34h, HARD STOP)
 9. Out of scope — do NOT build
 
 Multi-camera fusion, RTSP ingestion (mention as thin adapter in docs only),homography execution (config schema placeholder only), model fine-tuning, ANPR/plate reading/any PII, GPS matching, signal hardware control, auth, Docker, mobile.
+
+10. Video Swapping & Playback Specification
+- Raw CCTV sources reside in `data/videos/junction.mp4` and `dashboard-web/public/junction.mp4`.
+- Re-running `scripts/render_overlay.py` automatically generates the H.264 web-compatible `overlay.mp4` with `+faststart` and syncs it to `dashboard-web/public/overlay.mp4`.
+- `CctvPlayer.tsx` dynamically detects `video.duration` upon load and supports switching between `AI CCTV Twin`, `Raw CCTV`, and `Vector Twin`.
+

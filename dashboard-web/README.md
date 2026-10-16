@@ -1,36 +1,52 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CarbonTrack — Junction CO₂ Ops Console
 
-## Getting Started
+Municipal traffic-carbon operations console: live CO₂ telemetry from CCTV vehicle
+tracking, AI signal directives, and what-if policy simulation. Single-screen,
+operator-grade dark UI built for the DSU DevHack demo.
 
-First, run the development server:
+## Stack
+
+- Next.js 16 (App Router) + TypeScript + Tailwind v4
+- Framer Motion (feedback motion only, ≤300 ms ease-out)
+- Geist Sans / Geist Mono (mono for all numbers, timestamps, IDs)
+- No backend — all data flows through `src/lib/data.ts` from local mock
+  artifacts (swap in a real API later without touching components)
+
+## Run
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev        # http://localhost:3000
+npm run build      # vercel-ready, static prerender
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Data provenance
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `src/data/telemetry_series.json`, `events.jsonl`, `perception_stats.json`
+  are regenerated from real on-device inference of `junction.mp4` via
+  `scripts/run_pipeline.py` → `scripts/export_telemetry_series.py`
+  (`twin/corridor.py` extracts events). Directives replay
+  `artifacts/directives_mock.jsonl` (schema: `docs/contracts/directive.schema.json`).
+- The console replays the recorded session as a live feed: every cumulative
+  counter, the choke matrix and the directive log are **as-of the playback
+  clock**; re-issued directives stream in at even intervals across the window.
+- Missing telemetry renders as `—` — never invented.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Privacy
 
-## Learn More
+No video leaves the processing node · zero PII · telemetry-only uplink.
+The LLM dispatcher emits actions + rationale only; all carbon math is
+deterministic Python (per-vehicle emission factors in `config/emission_factors.yaml`,
+₹100/L petrol equivalence, currency INR).
 
-To learn more about Next.js, take a look at the following resources:
+## Structure
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+src/
+  app/            layout (fonts, OG metadata), page, globals.css
+  lib/data.ts     single data boundary: artifacts → replay model + prefix stats
+  lib/sim.ts      what-if scenario engine + annualized equivalences
+  components/     TopBar, HeadlineStrip, VideoPanel, ChokeHeatmap,
+                  DirectiveFeed, WhatIfDrawer, MethodologyDrawer
+  data/           frozen artifacts consumed at build time
+```

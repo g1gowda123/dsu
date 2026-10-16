@@ -108,6 +108,7 @@ class Tracker:
                 cx_px = float(xywh[0].item() if hasattr(xywh[0], "item") else xywh[0])
                 cy_px = float(xywh[1].item() if hasattr(xywh[1], "item") else xywh[1])
                 bbox_w_px = float(xywh[2].item() if hasattr(xywh[2], "item") else xywh[2])
+                bbox_h_px = float(xywh[3].item() if hasattr(xywh[3], "item") else xywh[3])
             elif hasattr(box, "xyxy") and len(box.xyxy) > 0:
                 xyxy = box.xyxy[0]
                 x1 = float(xyxy[0].item() if hasattr(xyxy[0], "item") else xyxy[0])
@@ -117,6 +118,7 @@ class Tracker:
                 cx_px = (x1 + x2) / 2.0
                 cy_px = (y1 + y2) / 2.0
                 bbox_w_px = abs(x2 - x1)
+                bbox_h_px = abs(y2 - y1)
             else:
                 continue
 
@@ -129,6 +131,7 @@ class Tracker:
                 "cx_norm": cx_norm,
                 "cy_norm": cy_norm,
                 "bbox_w_px": bbox_w_px,
+                "bbox_h_px": bbox_h_px,
                 "conf": conf,
             })
 

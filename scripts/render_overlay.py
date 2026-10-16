@@ -275,6 +275,28 @@ def render_overlay(
     if cap is not None:
         cap.release()
 
+    # Transcode to web-compatible H.264 (yuv420p, faststart)
+    import shutil
+    import subprocess
+    if shutil.which("ffmpeg"):
+        temp_h264 = out_file.with_name(f"{out_file.stem}_h264{out_file.suffix}")
+        cmd = [
+            "ffmpeg", "-y", "-i", str(out_file),
+            "-vcodec", "libx264", "-pix_fmt", "yuv420p",
+            "-movflags", "+faststart",
+            "-crf", "23",
+            str(temp_h264),
+        ]
+        ret = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if ret.returncode == 0 and temp_h264.exists():
+            temp_h264.replace(out_file)
+            print(f"[RenderOverlay] H.264 web transcode completed for {out_file}")
+
+    # Copy to dashboard-web/public/overlay.mp4 if present
+    web_public = REPO_ROOT / "dashboard-web" / "public"
+    if web_public.exists():
+        shutil.copy2(out_file, web_public / "overlay.mp4")
+
     print(f"[RenderOverlay] Complete. Output saved: {out_file} ({frame_idx} frames)")
     return out_file
 

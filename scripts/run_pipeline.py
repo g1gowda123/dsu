@@ -35,6 +35,7 @@ TELEMETRY_SCHEMA = pa.schema([
     ("cx_norm", pa.float32()),
     ("cy_norm", pa.float32()),
     ("bbox_w_px", pa.float32()),
+    ("bbox_h_px", pa.float32()),
     ("speed_kmh", pa.float32()),
     ("state", pa.string()),
     ("track_age_frames", pa.int32()),
@@ -143,6 +144,7 @@ def run_pipeline(
                 cx_norm = float(det["cx_norm"])
                 cy_norm = float(det["cy_norm"])
                 bbox_w_px = float(det["bbox_w_px"])
+                bbox_h_px = float(det.get("bbox_h_px", bbox_w_px))
 
                 track_cfg = dict(cfg)
                 track_cfg["cls"] = cls_name
@@ -166,6 +168,7 @@ def run_pipeline(
                     "cx_norm": float(cx_norm),
                     "cy_norm": float(cy_norm),
                     "bbox_w_px": float(bbox_w_px),
+                    "bbox_h_px": float(bbox_h_px),
                     "speed_kmh": float(new_state["speed_kmh"]),
                     "state": str(new_state["state"]),
                     "track_age_frames": int(new_state["track_age_frames"]),
@@ -182,7 +185,7 @@ def run_pipeline(
     else:
         df = pd.DataFrame(columns=[
             "video_time_s", "track_id", "cls", "cx_norm", "cy_norm",
-            "bbox_w_px", "speed_kmh", "state", "track_age_frames"
+            "bbox_w_px", "bbox_h_px", "speed_kmh", "state", "track_age_frames"
         ])
 
     table = pa.Table.from_pandas(df, schema=TELEMETRY_SCHEMA, preserve_index=False)

@@ -2,6 +2,7 @@
 data/videos/*.mp4
 assets_workspace/*.mp4
 artifacts/*.mp4
+dashboard-web/public/*.mp4
 !data/videos/.gitkeep
 artifacts/*
 !artifacts/.gitkeep
