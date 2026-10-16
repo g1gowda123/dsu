@@ -3,9 +3,16 @@ data/videos/*.mp4
 !data/videos/.gitkeep
 artifacts/*
 !artifacts/.gitkeep
+!artifacts/directives_mock.jsonl
+!artifacts/directives.jsonl
+!artifacts/corridor_payload_synthetic.json
+!artifacts/perf_report.json
+!artifacts/telemetry_synthetic.parquet
 docs/*
 !docs/.gitkeep
 !docs/*.md
+!docs/contracts/
+!docs/contracts/**
 __pycache__/
 *.py[cod]
 venv/
