@@ -4,7 +4,7 @@ An edge-native, privacy-preserving carbon footprint intelligence platform for mu
 
 ## Status
 
-M0 complete
+M0 complete. Track A perception pipeline delivered (CPU ByteTrack tracking, kinematic state machine, telemetry generation).
 
 ## Setup
 

@@ -13,3 +13,5 @@ venv/
 *.pt
 !models/finetuned/best.pt
 *.onnx
+IDD_FGVD/
+ab_autos.png

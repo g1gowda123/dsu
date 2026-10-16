@@ -11,6 +11,8 @@ frame_skip: 2
 confidence: 0.30
 min_track_age_frames: 15
 ema_alpha: 0.3
+use_dt_in_speed: true
+use_2d_motion: true
 state_thresholds:
   idle_v_kmh: 2
   idle_min_seconds: 3
