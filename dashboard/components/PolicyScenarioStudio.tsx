@@ -105,23 +105,11 @@ export interface PolicyScenarioStudioProps {
   className?: string;
 }
 
-// 5-class Indian urban taxonomy with baseline weights summing to 150 kg (150,000 g)
+// 5-class Indian urban taxonomy matching Prompt 7
 export const VEHICLE_CLASSES: VehicleClassConfig[] = [
   {
-    key: 'motorcycle',
-    label: '2-Wheelers / Motorcycles',
-    shortLabel: '2-Wheeler',
-    defaultEVShare: 30,
-    baselineGrams: 27000, // 27.0 kg (18%)
-    idleShare: 0.40,
-    color: '#38bdf8', // sky-400
-    textColor: 'text-sky-400',
-    bgLight: 'bg-sky-500/10',
-    borderColor: 'border-sky-500/30',
-  },
-  {
     key: 'auto_rickshaw',
-    label: 'Auto-Rickshaws (3W)',
+    label: 'Auto-Rickshaw (3W)',
     shortLabel: 'Auto-Rickshaw',
     defaultEVShare: 25,
     baselineGrams: 22500, // 22.5 kg (15%)
@@ -132,8 +120,20 @@ export const VEHICLE_CLASSES: VehicleClassConfig[] = [
     borderColor: 'border-amber-500/30',
   },
   {
+    key: 'motorcycle',
+    label: 'Two-Wheeler / Motorcycle',
+    shortLabel: 'Two-Wheeler',
+    defaultEVShare: 30,
+    baselineGrams: 27000, // 27.0 kg (18%)
+    idleShare: 0.40,
+    color: '#38bdf8', // sky-400
+    textColor: 'text-sky-400',
+    bgLight: 'bg-sky-500/10',
+    borderColor: 'border-sky-500/30',
+  },
+  {
     key: 'car',
-    label: 'Passenger Cars (4W)',
+    label: 'Passenger Car',
     shortLabel: 'Passenger Car',
     defaultEVShare: 20,
     baselineGrams: 52500, // 52.5 kg (35%)
@@ -145,8 +145,8 @@ export const VEHICLE_CLASSES: VehicleClassConfig[] = [
   },
   {
     key: 'bus',
-    label: 'City Transit Buses',
-    shortLabel: 'Transit Bus',
+    label: 'City Bus',
+    shortLabel: 'City Bus',
     defaultEVShare: 40,
     baselineGrams: 30000, // 30.0 kg (20%)
     idleShare: 0.50,
@@ -157,8 +157,8 @@ export const VEHICLE_CLASSES: VehicleClassConfig[] = [
   },
   {
     key: 'truck',
-    label: 'Commercial Trucks',
-    shortLabel: 'Comm. Truck',
+    label: 'Freight Truck',
+    shortLabel: 'Freight Truck',
     defaultEVShare: 10,
     baselineGrams: 18000, // 18.0 kg (12%)
     idleShare: 0.48,
@@ -546,7 +546,7 @@ export const PolicyScenarioStudio: React.FC<PolicyScenarioStudioProps> = ({
             className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition-all active:scale-95"
           >
             <FileText className="w-4 h-4" />
-            <span>Generate Policy Brief</span>
+            <span>Export Policy Brief</span>
           </button>
         </div>
       </div>
@@ -629,12 +629,12 @@ export const PolicyScenarioStudio: React.FC<PolicyScenarioStudioProps> = ({
               </span>
             </div>
 
-            {/* Slider: Adaptive Green Extension */}
+            {/* Slider: Adaptive Green Wave Extension */}
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between text-xs">
                 <div>
                   <span className="font-semibold text-slate-200">
-                    Adaptive Green Extension
+                    Adaptive Green Wave Extension
                   </span>
                   <p className="text-[11px] text-slate-400">
                     Reduces queue idle duration by ~3.2% per second
@@ -662,20 +662,20 @@ export const PolicyScenarioStudio: React.FC<PolicyScenarioStudioProps> = ({
                     }));
                   }}
                   className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-sky-400 hover:accent-sky-300 transition-all"
-                  aria-label="Adaptive Green Extension Seconds"
+                  aria-label="Adaptive Green Wave Extension Seconds"
                 />
                 <span className="text-[11px] font-mono text-slate-500">15s</span>
               </div>
             </div>
 
-            {/* Toggle: Heavy Vehicle Priority Wave */}
+            {/* Toggle: Peak Heavy Vehicle Metering */}
             <div className="pt-2 border-t border-slate-800/60 flex items-center justify-between">
               <div className="flex flex-col">
                 <span className="text-xs font-semibold text-slate-200">
-                  Heavy Vehicle Priority Wave
+                  Peak Heavy Vehicle Metering
                 </span>
                 <span className="text-[11px] text-slate-400">
-                  Grants green corridor for buses & trucks (-65% heavy idle)
+                  Divert buses & freight trucks from intersection choke zone (-65% heavy idle)
                 </span>
               </div>
 
@@ -706,22 +706,23 @@ export const PolicyScenarioStudio: React.FC<PolicyScenarioStudioProps> = ({
               3 BIG KPI COUNTERS (SMOOTH ANIMATED TRANSITIONS)
               ================================================================= */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {/* KPI 1: Carbon Abatement */}
+            {/* KPI 1: Net Carbon Abatement & Baseline vs Scenario */}
             <div className="p-4 rounded-xl bg-gradient-to-br from-emerald-950/40 via-slate-900 to-slate-900 border border-emerald-500/30 shadow-lg relative overflow-hidden group">
               <div className="flex items-center justify-between text-xs text-emerald-400 font-mono font-semibold mb-1">
-                <span>CARBON ABATEMENT</span>
+                <span>NET CARBON ABATEMENT</span>
                 <TrendingDown className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" />
               </div>
               <div className="text-2xl sm:text-3xl font-extrabold text-white font-mono tracking-tight">
                 -{animatedAbatement.toFixed(1)}%
               </div>
-              <div className="text-xs text-slate-400 font-mono mt-1 flex items-center gap-1">
-                <span className="text-emerald-400 font-bold">
-                  -{animatedAvoidedKg.toFixed(1)} kg CO2
-                </span>
-                <span>/ cycle</span>
+              <div className="text-xs text-slate-300 font-mono mt-1 flex items-center justify-between">
+                <span>Base: <strong className="text-slate-200">{results.baselineTotalKg} kg</strong></span>
+                <span>→ Scen: <strong className="text-emerald-400">{results.scenarioTotalKg} kg</strong></span>
               </div>
-              <div className="w-full bg-slate-800 h-1.5 rounded-full mt-3 overflow-hidden">
+              <div className="text-[10px] text-emerald-400/90 font-mono mt-0.5">
+                Net avoided: -{animatedAvoidedKg.toFixed(1)} kg CO2 / cycle
+              </div>
+              <div className="w-full bg-slate-800 h-1.5 rounded-full mt-2.5 overflow-hidden">
                 <div
                   style={{ width: `${Math.min(100, results.abatementPercent)}%` }}
                   className="h-full bg-emerald-400 transition-all duration-300 ease-out"
@@ -775,17 +776,17 @@ export const PolicyScenarioStudio: React.FC<PolicyScenarioStudioProps> = ({
               <div className="flex items-center gap-2">
                 <Layers className="w-4 h-4 text-emerald-400" />
                 <h3 className="text-sm font-bold tracking-wide text-slate-200 uppercase font-mono">
-                  Baseline vs Scenario Emissions (kg CO2)
+                  Baseline vs. Simulated Emissions (kg CO2)
                 </h3>
               </div>
               <div className="flex items-center gap-4 text-xs font-mono">
                 <div className="flex items-center gap-1.5">
                   <span className="w-3 h-3 rounded-sm bg-slate-600 inline-block" />
-                  <span className="text-slate-400">Baseline</span>
+                  <span className="text-slate-400">Baseline Emissions</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="w-3 h-3 rounded-sm bg-emerald-400 inline-block" />
-                  <span className="text-emerald-400 font-bold">Scenario</span>
+                  <span className="text-emerald-400 font-bold">Simulated Emissions</span>
                 </div>
               </div>
             </div>
@@ -826,10 +827,10 @@ export const PolicyScenarioStudio: React.FC<PolicyScenarioStudioProps> = ({
                               Baseline: <span className="font-bold text-slate-200">{data.Baseline} kg</span>
                             </p>
                             <p className="text-emerald-400">
-                              Scenario: <span className="font-bold text-emerald-300">{data.Scenario} kg</span>
+                              Simulated: <span className="font-bold text-emerald-300">{data.Scenario} kg</span>
                             </p>
                             <p className="text-sky-300 font-semibold mt-1">
-                              Abatement: -{data.Abatement}% (-{data.Avoided} kg)
+                              Net Abatement: -{data.Abatement}% (-{data.Avoided} kg)
                             </p>
                           </div>
                         );
@@ -838,12 +839,14 @@ export const PolicyScenarioStudio: React.FC<PolicyScenarioStudioProps> = ({
                     }}
                   />
                   <Bar
+                    name="Baseline Emissions"
                     dataKey="Baseline"
                     fill="#475569"
                     radius={[4, 4, 0, 0]}
                     maxBarSize={36}
                   />
                   <Bar
+                    name="Simulated Emissions"
                     dataKey="Scenario"
                     fill="#10b981"
                     radius={[4, 4, 0, 0]}
