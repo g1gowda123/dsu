@@ -25,6 +25,7 @@ def train_model(
     seed: int = 42,
     device: int | str = 0,
     workers: int = 8,
+    lr0: float = 0.01,
     project: str = "/home/g1/projects/finetune_workspace/runs",
     name: str = "yolo26n_idd5",
 ):
@@ -44,6 +45,7 @@ def train_model(
     print(f"Device     : {device} ({torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU'})")
     print(f"Image size : {imgsz}")
     print(f"Batch size : {batch} (auto-fallback to 8 on OOM)")
+    print(f"LR0        : {lr0}")
     print(f"Epochs     : {epochs} (patience={patience})")
     print(f"Workers    : {workers}")
     print(f"Project dir: {project}")
@@ -62,6 +64,7 @@ def train_model(
             epochs=epochs,
             patience=patience,
             batch=current_batch,
+            lr0=lr0,
             seed=seed,
             device=device,
             workers=workers,
@@ -86,6 +89,7 @@ def train_model(
                 epochs=epochs,
                 patience=patience,
                 batch=current_batch,
+                lr0=lr0,
                 seed=seed,
                 device=device,
                 workers=workers,
@@ -119,6 +123,9 @@ def main():
     parser.add_argument("--epochs", type=int, default=100, help="Max training epochs.")
     parser.add_argument("--patience", type=int, default=20, help="Early stopping patience.")
     parser.add_argument("--batch", type=int, default=16, help="Batch size (auto-fallback to 8 on OOM).")
+    parser.add_argument("--imgsz", type=int, default=640, help="Training image size.")
+    parser.add_argument("--lr0", type=float, default=0.01,
+                        help="Initial LR. Use ~0.004 for gentle domain adaptation from a fine-tuned base.")
     parser.add_argument("--device", default=0, help="CUDA device index or 'cpu'.")
     parser.add_argument("--workers", type=int, default=8, help="DataLoader workers.")
     parser.add_argument("--project", type=str, default="/home/g1/projects/finetune_workspace/runs",
@@ -130,9 +137,11 @@ def main():
     train_model(
         base_model=args.base,
         data_yaml=args.data,
+        imgsz=args.imgsz,
         epochs=args.epochs,
         patience=args.patience,
         batch=args.batch,
+        lr0=args.lr0,
         device=args.device,
         workers=args.workers,
         project=args.project,

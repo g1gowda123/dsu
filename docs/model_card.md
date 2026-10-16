@@ -3,10 +3,13 @@
 ## 1. Model Overview
 - **Model Architecture**: Ultralytics YOLO26n (anchor-free nano detection head, 121 layers, 2,390,707 parameters, 5.4 GFLOPs)
 - **Base Checkpoint**: `yolo26n.pt` (pre-trained on COCO)
-- **Fine-Tuned Checkpoint**: `best.pt` (Epoch 70 checkpoint from 90 completed epochs, early stopping triggered with patience=20)
+- **Fine-Tuned Checkpoint**: `best.pt` — **CCTV-adapted YOLO26n** (Stage-2 of the fixed-camera domain adaptation, see §8; best epoch 22 of 34). The original IDD-FG dashcam checkpoint is preserved as `best_idd_v1.pt`.
 - **Model Checkpoint Size**: 5.4 MB (stripped FP32 / torch weights)
-- **SHA256 Checksum**: `754915be8edf847d0d065d4edaabf7c1ddc93dfa474a842243f5a8b43c994ea9`
-- **Output Weights Location**: `models/finetuned/best.pt` (symlinked / staged from `/home/g1/projects/finetune_workspace/runs/yolo26n_idd5/weights/best.pt`)
+- **SHA256 Checksums**:
+  - `best.pt` (CCTV v2, shipped): `40f83da4516727fbc067c47351924a9a5dbb5cd8fc4196dfb1a7acd6e53852f0`
+  - `best_cctv_v1.pt` (pseudo-label-only adaptation): `0741c293652717e639bce6599c28a46780b6861683406d93051ce7bc7015626b`
+  - `best_idd_v1.pt` (IDD-FG dashcam checkpoint): `754915be8edf847d0d065d4edaabf7c1ddc93dfa474a842243f5a8b43c994ea9`
+- **Output Weights Location**: `models/finetuned/best.pt` (staged from `/home/g1/projects/finetune_workspace/runs/yolo26n_cctv_adapt_v2/weights/best.pt`)
 
 ---
 
@@ -102,3 +105,41 @@ Evaluated over 100 validation frames at `conf=0.30` using [scripts/ab_eval.py](f
 2. **E-Rickshaw Noise**: IDD-FG does not consistently separate battery electric e-rickshaws from standard petrol/LPG/CNG autorickshaws. All 3-wheelers are unified into `auto_rickshaw` with standard emission factors acting as a conservative upper bound.
 3. **Scooter & Motorcycle Merging**: Scooters and motorcycles were unified into `motorcycle` due to identical road occupancy and emission tier (`idle_g_per_min: 8`, `cruise_g_per_km: 80`).
 4. **Hardware Split**: Model was fine-tuned on an external workstation environment with CUDA wheels, producing an ONNX/PT bundle that executes strictly CPU-first in deployment.
+
+---
+
+## 8. Fixed-Camera (CCTV) Domain Adaptation (Oct 2026)
+
+### 8.1 Motivation
+The dashcam-perspective IDD-FG fine-tune (§1–7) under-detects at elevated fixed traffic-camera angles (the primary deployment target: `assets_workspace/ junc.mp4` and the dashboard junction clip). Two adaptation stages were trained on the RTX 4060 Laptop GPU from the IDD checkpoint (never from COCO), keeping the 5-class taxonomy unchanged.
+
+### 8.2 Stage 1 — Pseudo-label self-training (`best_cctv_v1.pt`)
+- Mined 143 frames (1.5 fps, 0–95 s) from the target clip + 58 auxiliary frames (0.5 fps) from the dashboard junction clip; held out 22 target frames (1 fps, 95–116.8 s) for triage evaluation.
+- Pseudo-labeled all frames with the IDD checkpoint at `conf=0.35` (290 target-train boxes, 117 aux boxes). No manual labeling.
+- Dataset: auto-containing frames upsampled ×3, others ×2, + 500 IDD replay images (350 auto-containing) to prevent forgetting; 100-image IDD val retained.
+- Training: 80 epochs max, early-stopped at 26 (best epoch 1), `lr0=0.004`, `imgsz=640`, `batch=16`.
+
+### 8.3 Stage 2 — Real CCTV supervision, IITM-HeTra (`best.pt`, shipped)
+- Added **IITM-HeTra** (IIT Madras WSAI, fixed elevated traffic cameras, Chennai, 2015): 1,418 frames / 6,360 boxes converted from VOC XML (`scripts/convert_hetra_to_yolo.py`). Class mapping visually verified: `Person` = two-wheeler riders → `motorcycle` (3,335), `Car` → `car` (2,746), `Bus` = heavy vehicles → `bus` (279). Dataset-1 of the mirror contains no 3-wheeler class.
+- Final train mix: 381 pseudo-labeled target imgs + 1,418 HeTra + 500 IDD replay (2,299 total; 10,062 boxes); val unchanged (22 target pseudo + 100 IDD).
+- Training: 35 epochs max, early-stopped at 34 (best epoch 22), `lr0=0.002`, resumed from Stage-1 weights.
+
+### 8.4 Triage Evaluation (22 held-out target frames @ conf 0.30, no GT)
+| Class | IDD dashcam (`best_idd_v1`) | CCTV v1 (`best_cctv_v1`) | **CCTV v2 (`best.pt`, shipped)** |
+| :--- | :---: | :---: | :---: |
+| `auto_rickshaw` | 2 | 4 | **7** |
+| `car` | 25 | 42 | 28 |
+| `motorcycle` | 25 | 42 | 33 |
+| **Total** | **52** | **88** | **68** |
+
+Stage-2 was shipped because auto-rickshaw recall at the CCTV angle (the emissions-critical class) is highest (3.5× the dashcam checkpoint), it is the only stage trained on real (non-pseudo) CCTV labels, and it generalizes to other Indian traffic-camera scenes. Stage-1 detects marginally more cars/motorcycles on the target scene (retained as `best_cctv_v1.pt` for A/B use).
+
+### 8.5 Artifacts & Reproduction
+- Scripts: `scripts/autolabel_frames.py`, `scripts/build_adapt_dataset.py`, `scripts/convert_hetra_to_yolo.py`, `scripts/eval_domain_adapt.py`; `scripts/train.py` gained `--lr0` / `--imgsz`.
+- Eval sheets + counts: `artifacts/adapt_v2/` (baseline vs shipped) and `artifacts/v1_vs_v2/`.
+- ONNX re-exported from the shipped weights: `best.onnx` (FP32, 32.4 FPS CPU) and `best_int8.onnx` (30.9 FPS CPU); `artifacts/perf_report.json` and `dashboard-web/src/data/perf_report.json` refreshed.
+
+### 8.6 Caveats
+1. Target-domain labels are model-generated (self-training); HeTra labels are author-provided. Triage above is detection-count based, not ground-truth mAP.
+2. HeTra `Bus` is a heavy-vehicle class and may contain a few trucks; IDD replay keeps bus/truck separation sharp.
+3. Next iteration (if continued): hand-label ~100 target frames for true mAP, and add close-range cage-lorry/truck boxes (currently missed by both stages).

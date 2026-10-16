@@ -1,8 +1,8 @@
 {
   "model_size_mb": 5.19,
-  "avg_fps_cpu": 28.47,
+  "avg_fps_cpu": 26.55,
   "peak_ram_mb": 1.75,
-  "telemetry_bytes_per_min": 30969.71,
-  "fps_onnx": 43.29,
-  "fps_int8": 33.12
+  "telemetry_bytes_per_min": 138650.34,
+  "fps_onnx": 32.43,
+  "fps_int8": 30.91
 }
