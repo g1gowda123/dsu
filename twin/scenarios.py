@@ -18,7 +18,7 @@ def _extract_stop_and_accel_events(
     df: pd.DataFrame,
     min_age: int = 15,
     dt_s: float = 0.08,
-    min_idle_s: float = 3.0,
+    min_idle_s: float = 1.0,
 ) -> List[Dict[str, Any]]:
     """Extract stop events with corresponding subsequent acceleration durations.
 
@@ -71,6 +71,51 @@ def _extract_stop_and_accel_events(
                 })
 
     return events
+
+def compute_event_savings(
+    events: List[Dict[str, Any]],
+    factors: Dict[str, Any],
+    mean_cruise_speeds: Dict[str, float],
+    green_extension_s: int = 0,
+    heavy_restriction: bool = False,
+    classes: Optional[List[str]] = None,
+) -> Dict[str, float]:
+    """Compute CO2 savings per class from signal policy intervention."""
+    if classes is None:
+        classes = ["motorcycle", "car", "auto_rickshaw", "bus", "truck"]
+    classes = sorted(list(set(classes + list(mean_cruise_speeds.keys()))))
+    signal_savings_per_class: Dict[str, float] = {c: 0.0 for c in classes}
+
+    for ev in events:
+        c = ev["cls"]
+        idle_s = ev["idle_s"]
+        accel_s = ev["accel_s"]
+
+        # Determine effective green extension X
+        if c in ("bus", "truck") and heavy_restriction:
+            eff_x = max(green_extension_s, 10)
+        else:
+            eff_x = green_extension_s
+
+        if eff_x <= 0 or idle_s <= 0:
+            continue
+
+        cut_fraction = min(1.0, float(eff_x) / idle_s)
+
+        cfg = get_class_factors(factors, c)
+        idle_rate = float(cfg.get("idle_g_per_min", 0.0)) / 60.0
+        cruise_speed = mean_cruise_speeds.get(c, 36.0)
+        cruise_rate = (float(cfg.get("cruise_g_per_km", 0.0)) * cruise_speed) / 3600.0
+        accel_mult = float(cfg.get("accel_multiplier", 1.0))
+
+        saved = cut_fraction * (
+            idle_rate * idle_s
+            + (accel_mult - 1.0) * cruise_rate * accel_s
+        )
+
+        signal_savings_per_class[c] += float(saved)
+
+    return signal_savings_per_class
 
 
 def apply_scenario(
@@ -165,39 +210,17 @@ def apply_scenario(
         baseline_per_class[c] = float(np.sum(frame_co2[c_mask]))
 
     # Extract stop and accel events
-    events = _extract_stop_and_accel_events(df_emitted, min_age=min_age, dt_s=dt_s, min_idle_s=3.0)
+    events = _extract_stop_and_accel_events(df_emitted, min_age=min_age, dt_s=dt_s, min_idle_s=1.0)
 
-    # Compute signal savings per class
-    signal_savings_per_class: Dict[str, float] = {c: 0.0 for c in classes}
-
-    for ev in events:
-        c = ev["cls"]
-        idle_s = ev["idle_s"]
-        accel_s = ev["accel_s"]
-
-        # Determine effective green extension X
-        if c in ("bus", "truck") and heavy_restriction:
-            eff_x = max(green_extension_s, 10)
-        else:
-            eff_x = green_extension_s
-
-        if eff_x <= 0 or idle_s <= 0:
-            continue
-
-        cut_fraction = min(1.0, float(eff_x) / idle_s)
-
-        cfg = get_class_factors(factors, c)
-        idle_rate = float(cfg.get("idle_g_per_min", 0.0)) / 60.0
-        cruise_rate = (float(cfg.get("cruise_g_per_km", 0.0)) * mean_cruise_speeds[c]) / 3600.0
-        accel_mult = float(cfg.get("accel_multiplier", 1.0))
-
-        # Saved = cut_fraction * (idle_rate * idle_s + (accel_multiplier - 1) * cruise_rate * accel_s)
-        saved = cut_fraction * (
-            idle_rate * idle_s
-            + (accel_mult - 1.0) * cruise_rate * accel_s
-        )
-
-        signal_savings_per_class[c] += float(saved)
+    # Compute signal savings per class via shared helper
+    signal_savings_per_class = compute_event_savings(
+        events=events,
+        factors=factors,
+        mean_cruise_speeds=mean_cruise_speeds,
+        green_extension_s=green_extension_s,
+        heavy_restriction=heavy_restriction,
+        classes=classes,
+    )
 
     # Combine signal savings with EV penetration
     per_class_breakdown: Dict[str, Dict[str, float]] = {}
@@ -238,3 +261,115 @@ def apply_scenario(
         "per_class_breakdown": per_class_breakdown,
         "assumptions": assumptions,
     }
+
+
+def compute_action_savings(
+    actions: List[Any],
+    factors: Dict[str, Any],
+    df: Optional[pd.DataFrame] = None,
+    payload: Optional[Union[Dict[str, Any], Any]] = None,
+    min_age: int = 15,
+    dt_s: float = 0.08,
+) -> float:
+    """Compute estimated CO2 savings in grams for a set of dispatcher actions.
+
+    Reuses the exact same mathematical model as What-If apply_scenario.
+    When df is provided:
+        Matches apply_scenario(df, factors, ...)['avoided_g'] identically.
+    When only payload is provided:
+        Computes analytical savings based on CPCB emission factors, idle duration,
+        and stop counts.
+    Returns 0.0 if all actions are no_action.
+    """
+    if not actions:
+        return 0.0
+
+    # Check if all actions are NO_ACTION
+    has_active_action = False
+    green_extension_s = 0
+    heavy_restriction = False
+
+    for a in actions:
+        a_type = a.type.value if hasattr(a.type, "value") else str(getattr(a, "type", a))
+        if a_type != "no_action":
+            has_active_action = True
+        sec = getattr(a, "seconds", None) or 0
+        target_cls = getattr(a, "target_class", None)
+
+        if a_type == "extend_green":
+            green_extension_s = max(green_extension_s, int(sec))
+        elif a_type in ("heavy_vehicle_restriction", "green_wave_priority"):
+            if target_cls in ("bus", "truck", None):
+                heavy_restriction = True
+                green_extension_s = max(green_extension_s, int(sec) if sec > 0 else 10)
+            else:
+                green_extension_s = max(green_extension_s, int(sec))
+
+    if not has_active_action or (green_extension_s <= 0 and not heavy_restriction):
+        return 0.0
+
+    if df is not None and not df.empty:
+        res = apply_scenario(
+            df=df,
+            factors=factors,
+            ev_share={},
+            green_extension_s=green_extension_s,
+            heavy_restriction=heavy_restriction,
+            min_age=min_age,
+            dt_s=dt_s,
+        )
+        return float(round(res["avoided_g"], 4))
+
+    # Analytical computation from payload when df is not available
+    if payload is None:
+        return float(round(15.0 * green_extension_s / 10.0, 4))
+
+    # Extract metrics from payload dict or Pydantic model
+    n_stops = int(payload.get("n_stop_events", 0) if isinstance(payload, dict) else getattr(payload, "n_stop_events", 0))
+    co2_total = float(payload.get("co2_g_total", 0.0) if isinstance(payload, dict) else getattr(payload, "co2_g_total", 0.0))
+    idle_ratio = float(payload.get("idle_ratio", 0.0) if isinstance(payload, dict) else getattr(payload, "idle_ratio", 0.0))
+    heavy_density = float(payload.get("heavy_vehicle_density", 0.0) if isinstance(payload, dict) else getattr(payload, "heavy_vehicle_density", 0.0))
+    window_s = float(payload.get("window_s", 60.0) if isinstance(payload, dict) else getattr(payload, "window_s", 60.0))
+
+    top_choke = payload.get("top_choke_zone") if isinstance(payload, dict) else getattr(payload, "top_choke_zone", None)
+    if isinstance(top_choke, dict):
+        idle_min = float(top_choke.get("idle_vehicle_minutes", 0.0))
+    elif top_choke is not None and hasattr(top_choke, "idle_vehicle_minutes"):
+        idle_min = float(top_choke.idle_vehicle_minutes)
+    else:
+        idle_min = (window_s / 60.0) * idle_ratio * max(1, int(payload.get("n_counted_vehicles", 1) if isinstance(payload, dict) else getattr(payload, "n_counted_vehicles", 1)))
+
+    if n_stops == 0 and idle_min > 0:
+        n_stops = max(1, int(round(idle_min * 1.5)))
+
+    if n_stops == 0:
+        return 0.0
+
+    avg_idle_s = max(3.0, (idle_min * 60.0) / max(1, n_stops))
+
+    # CPCB Emission parameters
+    # Bus/truck (heavy): idle ~50 g/min = 0.833 g/s, cruise ~950 g/km @ 36 km/h = 9.5 g/s, accel mult ~1.9 -> accel penalty ~ 0.9 * 9.5 * 3s = 25.65 g
+    idle_rate_heavy = 50.0 / 60.0
+    accel_penalty_heavy = 25.65
+
+    # Light (car, bike, auto): idle ~14 g/min = 0.233 g/s, cruise ~108 g/km @ 36 km/h = 1.08 g/s, accel mult ~1.47 -> accel penalty ~ 0.47 * 1.08 * 2s = 1.015 g
+    idle_rate_light = 14.0 / 60.0
+    accel_penalty_light = 1.015
+
+    if heavy_restriction:
+        eff_x = max(green_extension_s, 10)
+        cut_fraction = min(1.0, float(eff_x) / avg_idle_s)
+        n_heavy_stops = max(1, int(round(n_stops * max(0.25, heavy_density))))
+        saved = n_heavy_stops * (cut_fraction * (idle_rate_heavy * avg_idle_s + accel_penalty_heavy))
+    else:
+        eff_x = green_extension_s
+        cut_fraction = min(1.0, float(eff_x) / avg_idle_s)
+        idle_rate_mix = heavy_density * idle_rate_heavy + (1.0 - heavy_density) * idle_rate_light
+        accel_penalty_mix = heavy_density * accel_penalty_heavy + (1.0 - heavy_density) * accel_penalty_light
+        saved = n_stops * (cut_fraction * (idle_rate_mix * avg_idle_s + accel_penalty_mix))
+
+    saved = max(0.0, float(saved))
+    if co2_total > 0:
+        saved = min(saved, co2_total)
+    return float(round(saved, 4))
+
