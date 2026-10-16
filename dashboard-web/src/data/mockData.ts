@@ -214,9 +214,28 @@ export const CHOKE_MATRIX: ChokeZone[] = [
 // Initial Municipal Directives conforming to schema in goals.md & user contract
 export const INITIAL_DIRECTIVES: MunicipalDirective[] = [
   {
+    id: 'DIR-2026-1050',
+    directive_id: 'DIR-2026-1050',
+    timestamp: '2026-10-16T11:18:00Z',
+    intersection_id: 'junction_01',
+    urgency: 'critical',
+    actions: [
+      { type: 'extend_green', lane: 'N', seconds: 10, target_class: null },
+      { type: 'green_wave_priority', lane: 'E', seconds: 15, target_class: 'bus' },
+    ],
+    estimated_co2_saved_g: 1246.7,
+    confidence: 0.94,
+    rationale:
+      'Arterial freight queue spilling past North approach stopline. Synchronizing E-W green wave and adding +10s to North green phase to avoid heavy stop-start emissions.',
+    mode: 'llm',
+    status: 'pending',
+  },
+  {
     id: 'DIR-2026-1049',
+    directive_id: 'DIR-2026-1049',
     timestamp: '2026-10-16T11:15:00Z',
     intersection_id: 'junction_01',
+    urgency: 'high',
     actions: [
       { type: 'extend_green', lane: 'N', seconds: 12, target_class: 'bus' },
       { type: 'heavy_vehicle_restriction', lane: 'E', seconds: 0, target_class: 'truck' },
@@ -230,8 +249,10 @@ export const INITIAL_DIRECTIVES: MunicipalDirective[] = [
   },
   {
     id: 'DIR-2026-1048',
+    directive_id: 'DIR-2026-1048',
     timestamp: '2026-10-16T11:13:30Z',
     intersection_id: 'junction_04',
+    urgency: 'moderate',
     actions: [
       { type: 'green_wave_priority', lane: 'N', seconds: 10, target_class: 'bus' },
     ],
@@ -240,12 +261,15 @@ export const INITIAL_DIRECTIVES: MunicipalDirective[] = [
     rationale:
       'Downstream platoons approaching from MG Road at 38 km/h. Signal phase offset adjusted +10s to prevent stop-and-go shockwaves across J04 and J05.',
     mode: 'llm',
-    status: 'pending',
+    status: 'dispatched',
+    dispatchedAt: '2026-10-16T11:14:02Z',
   },
   {
     id: 'DIR-2026-1047',
+    directive_id: 'DIR-2026-1047',
     timestamp: '2026-10-16T11:10:00Z',
     intersection_id: 'junction_01',
+    urgency: 'critical',
     actions: [
       { type: 'heavy_vehicle_restriction', lane: 'S', seconds: 15, target_class: 'truck' },
     ],
@@ -258,17 +282,19 @@ export const INITIAL_DIRECTIVES: MunicipalDirective[] = [
   },
   {
     id: 'DIR-2026-1046',
+    directive_id: 'DIR-2026-1046',
     timestamp: '2026-10-16T11:05:00Z',
     intersection_id: 'junction_04',
+    urgency: 'low',
     actions: [
-      { type: 'extend_green', lane: 'W', seconds: 5, target_class: 'auto_rickshaw' },
+      { type: 'no_action', lane: null, seconds: 0, target_class: null },
     ],
-    estimated_co2_saved_g: 142.0,
-    confidence: 0.84,
+    estimated_co2_saved_g: 0.0,
+    confidence: 0.96,
     rationale:
-      'East-West minor approach queue cleared early. Truncating phase by 5s returns green cycle to saturated North arterial corridor.',
+      'Corridor telemetry nominal: idle ratio 0.12, heavy vehicle density 4.5%. Cycle timing operating at peak baseline efficiency.',
     mode: 'rules_fallback',
-    status: 'pending',
+    status: 'dismissed',
   },
 ];
 

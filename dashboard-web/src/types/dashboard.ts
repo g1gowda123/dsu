@@ -74,6 +74,7 @@ export interface SignalAction {
 
 export interface MunicipalDirective {
   id?: string;
+  directive_id?: string;
   timestamp: string;
   intersection_id: string;
   actions: SignalAction[];
@@ -82,6 +83,8 @@ export interface MunicipalDirective {
   rationale: string;
   mode: 'llm' | 'rules_fallback';
   status?: 'pending' | 'approved' | 'transmitted' | 'dispatched' | 'dismissed';
+  urgency?: 'critical' | 'high' | 'moderate' | 'low';
+  dispatchedAt?: string;
 }
 
 export interface SimulationParams {

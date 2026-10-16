@@ -13,6 +13,7 @@ Ingest intersection video, track vehicles (yolo26n + ByteTrack), classify kinema
     No new dependencies without user approval. Pin versions. Seed randomness.
     After M8 (freeze): bug fixes only, with user approval. No refactors, no "quickimprovements."
     Commit after every milestone. Never delete files without asking.
+    ALWAYS update information in goals.md, PROJECT_HANDOFF.md, README.md, and relevant documentation whenever milestones, features, or components are added or updated.
 
 3. Definition of Done
 

@@ -89,7 +89,7 @@ cp .env.example .env
 ### Step 3: Run Full Golden Test Suite
 ```bash
 .venv/bin/pytest -q
-# Expected: 47 passed in ~28s
+# Expected: 54 passed in ~28s
 ```
 
 ### Step 4: Run Perception Pipeline on Real CCTV Video
@@ -106,6 +106,18 @@ python scripts/run_pipeline.py --mock
 streamlit run dashboard/app.py
 ```
 Open `http://localhost:8501` in your browser to view the real-time KPIs, choke zones, synced overlay player, counterfactual simulator, and live dispatcher directives.
+
+### Step 6: Launch Next.js ATCS Municipal Operations Center
+```bash
+cd dashboard-web
+npm install
+npm run dev
+```
+Open `http://localhost:3000` in your browser to interact with the modern Next.js / TypeScript / Tailwind CSS control center, including:
+- **`MunicipalDispatchFeed.tsx`**: Chronological advisory feed with `Mode: Gemini 1.5 Flash` vs `Mode: Rules-Engine Fallback` high-contrast pill badges, urgency indicators, confidence gauge, and $\le 300\text{ chars}$ municipal rationale.
+- **Action Chips**: Concrete signals for `extend_green`, `green_wave_priority`, `heavy_vehicle_restriction`, and `no_action`.
+- **Deterministic CO2 Savings Badge**: Highlighting `⚡ 1,246.7 g CO2 Avoided` with tooltip *"Computed via CPCB mode-bin engine, never LLM hallucination"*.
+- **One-Click Dispatch**: Direct push to ATCS/SCATS with simulated transmission ping, plus multi-dimensional status and mode filters with full-text search.
 
 ---
 
