@@ -53,7 +53,7 @@ def generate_synthetic_telemetry(
     Schema:
         video_time_s: float
         track_id: int
-        cls: string (car|motorcycle|bus|truck)
+        cls: string (auto_rickshaw|bus|car|motorcycle|truck)
         cx_norm: float [0-1]
         cy_norm: float [0-1]
         bbox_w_px: float
@@ -63,15 +63,24 @@ def generate_synthetic_telemetry(
     """
     rng = np.random.default_rng(seed)
 
-    # Class mix: ~55% motorcycle, 30% car, 8% bus, 7% truck
-    n_moto = int(round(n_vehicles * 0.55))
-    n_car = int(round(n_vehicles * 0.30))
-    n_bus = max(2, int(round(n_vehicles * 0.08)))
-    n_truck = n_vehicles - (n_moto + n_car + n_bus)
+    # Class mix: ~50% motorcycle, 25% car, 15% auto_rickshaw, 5% bus, 5% truck
+    n_moto = int(round(n_vehicles * 0.50))
+    n_car = int(round(n_vehicles * 0.25))
+    n_auto = int(round(n_vehicles * 0.15))
+    n_bus = max(1, int(round(n_vehicles * 0.05)))
+    if n_vehicles >= 40:
+        n_bus = max(2, n_bus)
+    n_truck = max(0, n_vehicles - (n_moto + n_car + n_auto + n_bus))
+
+    # Adjust rounding differences to match exact n_vehicles
+    current_total = n_moto + n_car + n_auto + n_bus + n_truck
+    if current_total != n_vehicles:
+        n_moto += (n_vehicles - current_total)
 
     classes = (
         ["motorcycle"] * n_moto
         + ["car"] * n_car
+        + ["auto_rickshaw"] * n_auto
         + ["bus"] * n_bus
         + ["truck"] * n_truck
     )
@@ -79,12 +88,14 @@ def generate_synthetic_telemetry(
 
     speed_ranges = {
         "motorcycle": (30.0, 48.0),
+        "auto_rickshaw": (22.0, 38.0),
         "car": (32.0, 50.0),
         "bus": (20.0, 35.0),
         "truck": (20.0, 32.0),
     }
     bbox_ranges = {
         "motorcycle": (45.0, 65.0),
+        "auto_rickshaw": (60.0, 85.0),
         "car": (80.0, 110.0),
         "bus": (125.0, 160.0),
         "truck": (110.0, 145.0),
@@ -372,10 +383,16 @@ def main() -> None:
     gated_total_count = len(gated)
     idle_ratio = idle_gated_count / max(1, gated_total_count)
 
+    # Per-class unique vehicle counts
+    per_class_counts = df.groupby("cls")["track_id"].nunique().to_dict()
+    class_order = ["motorcycle", "car", "auto_rickshaw", "bus", "truck"]
+    sorted_counts = {c: per_class_counts.get(c, 0) for c in class_order if c in per_class_counts}
+
     print("=== Synthetic Telemetry Generated ===")
     print(f"Output File:       {out_path}")
     print(f"Total Rows:        {len(df)}")
     print(f"Unique Vehicles:   {total_vehicles}")
+    print(f"Per-Class Counts:  {sorted_counts}")
     print(f"Stop Events:       {stop_events}")
     print(f"Idle Ratio:        {idle_ratio:.4f}")
     bus_ids = df[df["cls"] == "bus"]["track_id"].unique()
@@ -385,9 +402,9 @@ def main() -> None:
     )
     print(f"Long Idle Buses (>90s): {long_idle_buses}")
 
-    # Check if corridor module exists to emit corridor payload
+    # Check if corridor module exists to emit corridor payload and events
     try:
-        from twin.corridor import aggregate, to_dispatcher_payload
+        from twin.corridor import aggregate, extract_events, to_dispatcher_payload, write_events_jsonl
         from twin.emission_engine import compute_track_emissions
         import yaml
 
@@ -408,6 +425,12 @@ def main() -> None:
                 with open(payload_path, "w", encoding="utf-8") as f:
                     json.dump(payload, f, indent=2)
                 print(f"Corridor Payload:  {payload_path}")
+
+            # Also emit events.jsonl
+            events = extract_events(df_emitted, min_age=15, dt_s=0.08)
+            events_path = Path("artifacts/events.jsonl")
+            write_events_jsonl(events, events_path)
+            print(f"Events Emitted:    {events_path} ({len(events)} events)")
     except (ImportError, AttributeError, Exception):
         # Corridor module not yet built; will be generated once corridor is implemented
         pass

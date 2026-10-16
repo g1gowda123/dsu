@@ -54,6 +54,13 @@ def compute_zone_rank(
     return ranked
 
 
+def get_zone_id(cx_norm: float, cy_norm: float) -> str:
+    """Determine 4x4 spatial zone id from normalized coordinates."""
+    r = int(np.clip(float(cy_norm) * 4.0, 0.0, 3.0))
+    c = int(np.clip(float(cx_norm) * 4.0, 0.0, 3.0))
+    return f"z_r{r}_c{c}"
+
+
 def extract_events(
     df: pd.DataFrame,
     min_age: int = 15,
@@ -61,6 +68,9 @@ def extract_events(
     min_idle_s: float = 3.0,
 ) -> List[Dict[str, Any]]:
     """Derive telemetry events: vehicle_counted, stop_started, stop_ended.
+
+    Schema:
+        {"ts": float, "event": str, "track_id": int|null, "cls": str|null, "zone": str|null, "value": float|null}
 
     - vehicle_counted: Emitted on first gated frame per track.
     - stop_started / stop_ended: Emitted for contiguous IDLE segments >= min_idle_s.
@@ -77,17 +87,22 @@ def extract_events(
 
         if not gated_group.empty:
             first_row = gated_group.iloc[0]
+            zone_id = get_zone_id(first_row["cx_norm"], first_row["cy_norm"])
             events.append({
-                "timestamp_s": float(first_row["video_time_s"]),
+                "ts": float(first_row["video_time_s"]),
+                "event": "vehicle_counted",
                 "track_id": int(track_id),
                 "cls": str(first_row["cls"]),
-                "event": "vehicle_counted",
+                "zone": zone_id,
+                "value": None,
             })
 
         # Identify contiguous IDLE segments
         states = group_sorted["state"].values
         times = group_sorted["video_time_s"].values
         classes = group_sorted["cls"].values
+        cx_vals = group_sorted["cx_norm"].values
+        cy_vals = group_sorted["cy_norm"].values
         is_idle = (states == "IDLE")
 
         if not np.any(is_idle):
@@ -105,22 +120,27 @@ def extract_events(
                 t_end = float(times[end_idx - 1] + dt_s)
                 duration_s = float(round(length * dt_s, 2))
                 cls_name = str(classes[start_idx])
+                zone_start = get_zone_id(cx_vals[start_idx], cy_vals[start_idx])
+                zone_end = get_zone_id(cx_vals[end_idx - 1], cy_vals[end_idx - 1])
 
                 events.append({
-                    "timestamp_s": t_start,
+                    "ts": t_start,
+                    "event": "stop_started",
                     "track_id": int(track_id),
                     "cls": cls_name,
-                    "event": "stop_started",
+                    "zone": zone_start,
+                    "value": None,
                 })
                 events.append({
-                    "timestamp_s": t_end,
+                    "ts": t_end,
+                    "event": "stop_ended",
                     "track_id": int(track_id),
                     "cls": cls_name,
-                    "event": "stop_ended",
+                    "zone": zone_end,
                     "value": duration_s,
                 })
 
-    events.sort(key=lambda e: (e["timestamp_s"], e["track_id"]))
+    events.sort(key=lambda e: (e["ts"], e["track_id"] if e["track_id"] is not None else 0))
     return events
 
 
@@ -211,7 +231,7 @@ def aggregate(
         n_counted = int(gated["track_id"].nunique())
 
         # Stop events starting in this window
-        w_stops = [e for e in stop_start_events if w_start <= e["timestamp_s"] < w_end]
+        w_stops = [e for e in stop_start_events if w_start <= e["ts"] < w_end]
         n_stops = len(w_stops)
 
         # co2_g_per_min normalized to 1 minute
@@ -242,7 +262,7 @@ def aggregate(
 
 def to_dispatcher_payload(
     agg_row: Dict[str, Any],
-    zone_rank: Optional[Union[List[Dict[str, Any]], Dict[str, Any]]] = None,
+    zone_rank: Optional[Union[List[Dict[str, Any]], Dict[str, Any], str]] = None,
     intersection_id: str = "junction_01",
 ) -> Dict[str, Any]:
     """Format corridor aggregate row into strict LLM dispatcher payload schema.
@@ -261,6 +281,10 @@ def to_dispatcher_payload(
         "top_choke_zone": {"id": str, "idle_vehicle_minutes": float} | null
     }
     """
+    if isinstance(zone_rank, str):
+        intersection_id = zone_rank
+        zone_rank = None
+
     top_zone = None
     if isinstance(zone_rank, list) and zone_rank:
         if zone_rank[0].get("idle_vehicle_minutes", 0.0) > 0:

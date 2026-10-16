@@ -144,8 +144,8 @@ def apply_scenario(
     # Calculate baseline gated emissions per frame
     frame_co2 = np.where(gated_mask, rate_vals * dt_vals, 0.0)
 
-    # All known classes
-    all_classes = ["motorcycle", "car", "bus", "truck"]
+    # All known classes (including auto_rickshaw)
+    all_classes = ["motorcycle", "car", "auto_rickshaw", "bus", "truck"]
     present_classes = list(np.unique(cls_vals))
     classes = sorted(list(set(all_classes + present_classes)))
 
