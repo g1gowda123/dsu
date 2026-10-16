@@ -1,5 +1,7 @@
 .env
 data/videos/*.mp4
+assets_workspace/*.mp4
+artifacts/*.mp4
 !data/videos/.gitkeep
 artifacts/*
 !artifacts/.gitkeep
@@ -8,6 +10,10 @@ artifacts/*
 !artifacts/corridor_payload_synthetic.json
 !artifacts/perf_report.json
 !artifacts/telemetry_synthetic.parquet
+!artifacts/telemetry.parquet
+!artifacts/telemetry_meta.json
+!artifacts/perception_stats.json
+!artifacts/events.jsonl
 docs/*
 !docs/.gitkeep
 !docs/*.md

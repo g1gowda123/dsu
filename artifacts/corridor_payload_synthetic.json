@@ -1,0 +1,15 @@
+{
+  "intersection_id": "junction_01",
+  "timestamp": "2026-10-15T10:54:57.875959+00:00",
+  "window_s": 60.0,
+  "co2_g_total": 134.0785,
+  "co2_g_per_min": 134.2576,
+  "idle_ratio": 0.6131,
+  "heavy_vehicle_density": 0.0,
+  "n_counted_vehicles": 14,
+  "n_stop_events": 9,
+  "top_choke_zone": {
+    "id": "z_r1_c1",
+    "idle_vehicle_minutes": 0.7907
+  }
+}
