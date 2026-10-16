@@ -138,89 +138,28 @@ This project retrofits existing municipal CCTV traffic camera fleets into a real
 
 ---
 
+### ✅ M6 — GenAI Dispatcher Module & Strict Carbon Injection
+- **Pydantic Contracts & Mocks:** `dispatcher/schema.py` implements frozen contracts (`ActionType`, `Action`, `Directive`, `TopChokeZone`, `CorridorPayload`) with UUID4 hex `directive_id`, UTC ISO timestamp, validation bounds, exported `docs/contracts/directive.schema.json`, and 10 diverse mock directives in `artifacts/directives_mock.jsonl`.
+- **Deterministic Rules Engine:** `dispatcher/rules_fallback.py` triggers on corridor congestion or heavy vehicle density; uses single-source-of-truth carbon math directly via `twin/scenarios.py::compute_action_savings`.
+- **Schema-Constrained LLM Client:** `dispatcher/llm_dispatcher.py` implements `LLMProposal` with **zero numeric emissions fields** (structurally preventing LLM hallucinated savings), 8s timeout, 1 retry, post-validation Python CO2 injection, append-only `artifacts/directives.jsonl`, and `--offline` flag.
+- **Guardrail & Robustness Tests:** Tested across 20 payloads, proving LLM carbon injections are ignored, corrupt schemas fall back gracefully, and no-key execution is 100% schema-valid.
+
+### ✅ End-to-End Real CCTV Video Telemetry & Live Aggregation
+- **Perception on Real Video:** `scripts/run_pipeline.py` executed on `assets_workspace/junction.mp4` (96.5s duration, 2412 frames at 25 FPS) producing `artifacts/telemetry.parquet` (2344 rows, 124 tracks).
+- **Realistic Class Distribution:** Verified all 5 classes (`motorcycle: 1165`, `car: 780`, `truck: 346`, `auto_rickshaw: 46`, `bus: 7`).
+- **Corridor Events & Directives:** Emitted `artifacts/events.jsonl` (22 events). Tuned `rules_fallback` to real traffic distribution — Window 1 activates heavy vehicle restriction and green wave saving 1.2467g CO2, exactly matching `apply_scenario`.
+- **Pipeline Flexibility:** Added `--mock` CLI flag to `scripts/run_pipeline.py` while keeping real CCTV inference as the default path.
+
+### ✅ M7 — Complete Documentation, Architecture & Deployment Topology
+- **Comprehensive README:** Full rewrite of `README.md` featuring Mermaid architecture diagram, CLI quickstart, Edge $\rightarrow$ ICCC deployment topology, CPCB/ARAI BS-VI equations, mode-bin formulas, strict privacy statement (zero PII, no ANPR, edge-only RAM inference), and known limitations.
+- **Hygiene & Artifacts:** `.env` gitignored, `.env.example` committed, large `.mp4` binaries excluded from git tracking, realistic dual-mode fallback directives pre-populated in `artifacts/directives.jsonl`.
+- **Test Suite Health:** **47/47 Golden Path Tests Passing** (`.venv/bin/pytest -q` in ~28s).
+
+---
+
 ## 3. What HAS TO BE DONE (Pending Tasks & Open Gaps)
 
-### 🔴 Priority 1: Milestone M6 — GenAI Dispatcher Module (`dispatcher/`)
-*Currently `dispatcher/` contains only `__init__.py`. This is the major architectural component left to implement.*
-
-1. **`dispatcher/schema.py`:**
-   - Define Pydantic models matching Section 6 of `goals.md`:
-     ```python
-     class ActionType(str, Enum):
-         EXTEND_GREEN = "extend_green"
-         GREEN_WAVE_PRIORITY = "green_wave_priority"
-         HEAVY_VEHICLE_RESTRICTION = "heavy_vehicle_restriction"
-         NO_ACTION = "no_action"
-
-     class Action(BaseModel):
-         type: ActionType
-         lane: Optional[Literal["N", "S", "E", "W"]] = None
-         seconds: Optional[int] = Field(None, ge=0, le=15)
-         target_class: Optional[Literal["car", "motorcycle", "auto_rickshaw", "bus", "truck"]] = None
-
-     class Directive(BaseModel):
-         timestamp: str
-         intersection_id: str
-         actions: List[Action]
-         estimated_co2_saved_g: float  # Injected in Python; never LLM
-         confidence: float = Field(..., ge=0.0, le=1.0)
-         rationale: str = Field(..., max_length=300)
-         mode: Literal["llm", "rules_fallback"]
-     ```
-2. **`dispatcher/rules_fallback.py`:**
-   - Deterministic rule engine for offline or quota-exceeded modes:
-     - If `top_choke_zone.idle_vehicle_minutes > 5.0` or `idle_ratio > 0.40`: trigger `extend_green` on congested axis for 8–12 seconds.
-     - If `heavy_vehicle_density > 0.15` and stop events high: trigger `heavy_vehicle_restriction` or `green_wave_priority` for 10 seconds on `bus`/`truck`.
-     - Otherwise: return `no_action`.
-     - Calculate `estimated_co2_saved_g` deterministically based on avoided idle duration $\times$ idle emission factor.
-     - Set `mode="rules_fallback"`, `confidence=0.85`.
-3. **`dispatcher/llm_dispatcher.py`:**
-   - Integrates with Gemini / OpenAI / LiteLLM (using API key from `.env`).
-   - Guardrail rule: **NEVER let LLM compute emissions**. Prompt passes corridor telemetry payload and instructs model to pick actions and concise rationales ($\le 300$ chars).
-   - Validation retry: 1 retry if schema validation fails; fall back to `rules_fallback` on error.
-   - Inject post-validation Python-calculated `estimated_co2_saved_g`.
-   - Append directive record to `artifacts/directives.jsonl`.
-4. **`tests/test_dispatcher.py`:**
-   - Test 20 synthetic/mock corridor payloads.
-   - Test offline mode when API key is unset $\rightarrow$ asserts `mode == "rules_fallback"` and 100% schema valid.
-   - Test that LLM responses with corrupted schemas fall back gracefully.
-
----
-
-### 🟡 Priority 2: End-to-End Pipeline Run on Junction Video
-- Currently, tests and dashboard use synthetic telemetry fixture fallback (`telemetry_synthetic.parquet`).
-- Run `scripts/run_pipeline.py` on the verified video `assets_workspace/junction.mp4`:
-  - Produce real `artifacts/telemetry.parquet` (60s+ duration).
-  - Verify `telemetry.parquet` contains realistic distributions of auto-rickshaws, bikes, and cars.
-  - Run `twin/corridor.py` over the live telemetry to populate `artifacts/events.jsonl` and trigger initial directives into `artifacts/directives.jsonl`.
-
----
-
-### 🟡 Priority 3: README & Documentation Polish (M7 Requirement)
-- Replace the skeleton `README.md` with:
-  - System architecture diagram (Mermaid).
-  - Setup and execution instructions:
-    ```bash
-    # Install dependencies (CPU PyTorch)
-    pip install -r requirements.txt
-    
-    # Run test suite
-    pytest -q
-    
-    # Run perception pipeline
-    python scripts/run_pipeline.py --video assets_workspace/junction.mp4
-    
-    # Launch Streamlit dashboard
-    streamlit run dashboard/app.py
-    ```
-  - Deployment topology (Edge Box $\rightarrow$ Telemetry $\rightarrow$ ICCC).
-  - CPCB / ARAI emission factor citations and mathematical equations.
-  - Strict Privacy Policy statement (Zero PII, no ANPR, edge processing).
-  - Known limitations (e.g. COCO auto-rickshaw gap vs. custom fine-tuned IDD-5 weights).
-
----
-
-### 🟢 Priority 4: Milestone M8 — Demo Video Recording & Git Release Freeze
+### 🟢 Priority 1: Milestone M8 — Demo Video Recording & Git Release Freeze
 - **Demo Backup Video:** Record a 2–3 minute video recording (`artifacts/demo_backup.mp4`) demonstrating:
   - Dashboard overview and live metric cards.
   - Video overlay playback with dynamic state tracking.
@@ -257,17 +196,21 @@ When handing off this project to another LLM, enforce the following non-negotiab
 | `twin/emission_engine.py` | Complete | Mode-bin CO2 emission accumulator |
 | `twin/corridor.py` | Complete | 60s window rollups, 4x4 choke points, dispatcher payload |
 | `twin/scenarios.py` | Complete | Counterfactual policy engine (EV mix, green extension) |
-| `dispatcher/schema.py` | **Pending** | Pydantic contracts for actions, directives, payloads |
-| `dispatcher/rules_fallback.py` | **Pending** | Deterministic rule-based dispatcher fallback |
-| `dispatcher/llm_dispatcher.py` | **Pending** | Schema-constrained LLM client + Python CO2 inject |
+| `dispatcher/schema.py` | Complete | Pydantic contracts for actions, directives, payloads |
+| `dispatcher/rules_fallback.py` | Complete | Deterministic rule-based dispatcher fallback |
+| `dispatcher/llm_dispatcher.py` | Complete | Schema-constrained LLM client + Python CO2 inject |
 | `dashboard/app.py` | Complete | Streamlit command UI & what-if simulator |
 | `scripts/run_pipeline.py` | Complete | Video $\rightarrow$ tracking $\rightarrow$ kinematics $\rightarrow$ `telemetry.parquet` |
 | `scripts/render_overlay.py` | Complete | Video annotator with state colors and CO2 values |
 | `scripts/benchmark.py` | Complete | Measures CPU FPS, memory, telemetry bandwidth |
 | `docs/deployment.md` | Complete | One-pager edge deployment & ICCC integration doc |
 | `docs/model_card.md` | Complete | Technical card for fine-tuned IDD vehicle detector |
-| `README.md` | **Pending Expansion** | Complete project readme with architecture & run steps |
+| `docs/contracts/directive.schema.json` | Complete | Exported Pydantic v2 JSON Schema for frontend |
+| `README.md` | Complete | Comprehensive project readme with architecture & run steps |
 | `artifacts/perf_report.json` | Complete | Measured benchmark numbers |
 | `artifacts/overlay.mp4` | Complete | Sample state-overlay video |
-| `artifacts/directives.jsonl` | **Pending** | Append-only municipal directives log |
+| `artifacts/telemetry.parquet` | Complete | 96.5s real CCTV perception telemetry ledger |
+| `artifacts/events.jsonl` | Complete | Extracted corridor tracking and stop events |
+| `artifacts/directives_mock.jsonl` | Complete | 10 diverse mock directives for frontend contract |
+| `artifacts/directives.jsonl` | Complete | Append-only municipal directives log with fallback entries |
 | `artifacts/demo_backup.mp4` | **Pending** | 2-3 minute backup video recording |
