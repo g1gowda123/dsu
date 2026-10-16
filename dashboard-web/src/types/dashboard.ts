@@ -65,21 +65,23 @@ export interface ChokeZone {
   heavyVehicleCount: number;
 }
 
-export interface MunicipalDirective {
-  id: string;
-  timestamp: string;
-  intersectionId: string;
-  title: string;
-  actionType: 'extend_green' | 'green_wave_priority' | 'heavy_vehicle_restriction' | 'no_action';
-  lane: 'N' | 'S' | 'E' | 'W' | 'All';
+export interface SignalAction {
+  type: 'extend_green' | 'green_wave_priority' | 'heavy_vehicle_restriction' | 'no_action' | string;
+  lane: 'N' | 'S' | 'E' | 'W' | 'All' | null;
   seconds: number;
-  targetClass: VehicleClass | 'all_heavy' | null;
-  estimatedCo2Saved_g: number;
+  target_class: VehicleClass | string | null;
+}
+
+export interface MunicipalDirective {
+  id?: string;
+  timestamp: string;
+  intersection_id: string;
+  actions: SignalAction[];
+  estimated_co2_saved_g: number;
   confidence: number;
   rationale: string;
   mode: 'llm' | 'rules_fallback';
-  status: 'pending' | 'approved' | 'rejected' | 'dispatched';
-  urgency: 'high' | 'medium' | 'routine';
+  status?: 'pending' | 'approved' | 'transmitted' | 'dispatched' | 'dismissed';
 }
 
 export interface SimulationParams {

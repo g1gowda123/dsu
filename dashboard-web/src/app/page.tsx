@@ -89,14 +89,14 @@ export default function DashboardPage() {
   // Handlers for Directives
   const handleApproveDirective = (id: string) => {
     setDirectives((prev) =>
-      prev.map((d) => (d.id === id ? { ...d, status: 'approved' } : d))
+      prev.map((d) => (d.id === id ? { ...d, status: 'approved' as const } : d))
     );
     showToast(`Directive ${id} approved. Ready to dispatch.`);
   };
 
   const handleDispatchToAtcs = (id: string) => {
     setDirectives((prev) =>
-      prev.map((d) => (d.id === id ? { ...d, status: 'dispatched' } : d))
+      prev.map((d) => (d.id === id ? { ...d, status: 'dispatched' as const } : d))
     );
     showToast(`Directive ${id} successfully pushed to SCATS/ATCS Controller.`);
   };
