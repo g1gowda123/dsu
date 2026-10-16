@@ -5,7 +5,7 @@ import { Header } from '@/components/Header';
 import { MetricKpiGrid } from '@/components/MetricKpiGrid';
 import { CctvPlayer } from '@/components/CctvPlayer';
 import { RollingEmissionChart } from '@/components/RollingEmissionChart';
-import { SpatialChokeMatrix } from '@/components/SpatialChokeMatrix';
+import { SpatialChokeGrid } from '@/components/SpatialChokeGrid';
 import { MunicipalDispatchFeed } from '@/components/MunicipalDispatchFeed';
 import { SimulationStudio } from '@/components/SimulationStudio';
 import { MethodologyModal } from '@/components/MethodologyModal';
@@ -89,14 +89,14 @@ export default function DashboardPage() {
   // Handlers for Directives
   const handleApproveDirective = (id: string) => {
     setDirectives((prev) =>
-      prev.map((d) => (d.id === id ? { ...d, status: 'approved' } : d))
+      prev.map((d) => (d.id === id ? { ...d, status: 'approved' as const } : d))
     );
     showToast(`Directive ${id} approved. Ready to dispatch.`);
   };
 
   const handleDispatchToAtcs = (id: string) => {
     setDirectives((prev) =>
-      prev.map((d) => (d.id === id ? { ...d, status: 'dispatched' } : d))
+      prev.map((d) => (d.id === id ? { ...d, status: 'dispatched' as const } : d))
     );
     showToast(`Directive ${id} successfully pushed to SCATS/ATCS Controller.`);
   };
@@ -184,11 +184,7 @@ export default function DashboardPage() {
 
           {/* Column Right (40% ~ 5 cols): Spatial Choke Matrix & Municipal Dispatch Feed */}
           <div className="lg:col-span-5 flex flex-col gap-4">
-            <SpatialChokeMatrix
-              zones={zones}
-              selectedZone={selectedZone}
-              onSelectZone={setSelectedZone}
-            />
+            <SpatialChokeGrid />
 
             <MunicipalDispatchFeed
               directives={directives}
