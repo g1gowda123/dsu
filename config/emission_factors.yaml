@@ -24,8 +24,8 @@ classes:
     cruise_g_per_km: 95
     accel_multiplier: 1.4
     mean_length_m: 3.0
-    source: "TODO"
-    year: null
+    source: "ARAI / CPCB Air Quality Monitoring and Source Apportionment Study for Three-Wheelers (CNG/4-Stroke)"
+    year: 2020
   bus:
     coco_id: 5
     idle_g_per_min: 45
