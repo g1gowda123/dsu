@@ -153,7 +153,21 @@ This project retrofits existing municipal CCTV traffic camera fleets into a real
 ### ✅ M7 — Complete Documentation, Architecture & Deployment Topology
 - **Comprehensive README:** Full rewrite of `README.md` featuring Mermaid architecture diagram, CLI quickstart, Edge $\rightarrow$ ICCC deployment topology, CPCB/ARAI BS-VI equations, mode-bin formulas, strict privacy statement (zero PII, no ANPR, edge-only RAM inference), and known limitations.
 - **Hygiene & Artifacts:** `.env` gitignored, `.env.example` committed, large `.mp4` binaries excluded from git tracking, realistic dual-mode fallback directives pre-populated in `artifacts/directives.jsonl`.
-- **Test Suite Health:** **47/47 Golden Path Tests Passing** (`.venv/bin/pytest -q` in ~28s).
+- **Test Suite Health:** **54/54 Golden Path Tests Passing** (`.venv/bin/pytest -q` in ~28s).
+
+### ✅ Modern Next.js Control Center: MunicipalDispatchFeed.tsx
+- **Directive Cards Stream:** Real-time chronological incoming advisory directive feed with timestamp, junction identifier, and dynamic urgency indicators (`CRITICAL INTERVENTION`, `HIGH PRIORITY`, `MODERATE`, `ROUTINE`).
+- **High-Contrast Mode Badges:** Pill badges showing `Mode: Gemini 1.5 Flash` (purple/indigo with sparkle icon) or `Mode: Rules-Engine Fallback` (amber with shield alert icon).
+- **Confidence & Rationale Bounds:** Visual progress gauge for confidence (0–100%) and concise municipal rationale box strictly bounded to $\le 300\text{ characters}$ (schema compliant).
+- **Concrete Action Chips:** Clear visual badges for:
+  - `extend_green` (e.g., `+10s on Lane N`)
+  - `green_wave_priority` (e.g., `Corridor E-W Synchronized`)
+  - `heavy_vehicle_restriction` (e.g., `Restrict Heavy Vehicles >10t`)
+  - `no_action` (`No Action: Monitoring Baseline`)
+- **Deterministic CO2 Savings Badge:** Prominent badge highlighting avoided grams CO2 (`⚡ 1,246.7 g CO2 Avoided`) with an interactive tooltip explaining: *"Computed via CPCB mode-bin engine, never LLM hallucination"*.
+- **Interactive Operator Dispatch & ATCS/SCATS Transmission:** One-click "Approve & Push to ATCS / SCATS" with simulated transmission ping animation (`animate-ping` beacon) updating status to "Dispatched to Signal Controller", and "Dismiss / Reject" or "Recall Phase".
+- **Multi-Dimensional Filters & Search:** Live search across junction IDs, directive IDs, actions, and rationale keywords, plus dual-row status (`Pending`, `Dispatched`, `Dismissed`) and mode (`Gemini 1.5 Flash`, `Rules Fallback`) filter tabs with badge counts.
+- **Production Validation:** Zero ESLint warnings/errors and clean static build via `npm run build` in `dashboard-web/`.
 
 ---
 
@@ -200,6 +214,7 @@ When handing off this project to another LLM, enforce the following non-negotiab
 | `dispatcher/rules_fallback.py` | Complete | Deterministic rule-based dispatcher fallback |
 | `dispatcher/llm_dispatcher.py` | Complete | Schema-constrained LLM client + Python CO2 inject |
 | `dashboard/app.py` | Complete | Streamlit command UI & what-if simulator |
+| `dashboard-web/src/components/MunicipalDispatchFeed.tsx` | Complete | GenAI advisory feed & ATCS/SCATS dispatch control center |
 | `scripts/run_pipeline.py` | Complete | Video $\rightarrow$ tracking $\rightarrow$ kinematics $\rightarrow$ `telemetry.parquet` |
 | `scripts/render_overlay.py` | Complete | Video annotator with state colors and CO2 values |
 | `scripts/benchmark.py` | Complete | Measures CPU FPS, memory, telemetry bandwidth |
