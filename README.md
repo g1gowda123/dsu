@@ -101,7 +101,7 @@ python scripts/run_pipeline.py --input assets_workspace/junction.mp4 --output-di
 python scripts/run_pipeline.py --mock
 ```
 
-### Step 5: Launch Streamlit Municipal Command Dashboard
+### Step 5: Launch Streamlit Dashboard
 ```bash
 streamlit run dashboard/app.py
 ```
